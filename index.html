@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SPY SNIPER</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #040507;
+  --surface:  #080b0e;
+  --surface2: #0d1117;
+  --border:   #181e26;
+  --border2:  #242d36;
+  --text:     #a8bcc4;
+  --dim:      #384550;
+  --dim2:     #506070;
+  --amber:    #f5a623;
+  --amber-lo: rgba(245,166,35,0.10);
+  --green:    #18d46c;
+  --green-lo: rgba(24,212,108,0.10);
+  --red:      #f02848;
+  --red-lo:   rgba(240,40,72,0.10);
+  --blue:     #3490ff;
+  --white:    #e0eaee;
+}
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ── HEADER ───────────────────────────────────────────── */
+.hdr {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 14px;
+  height: 56px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.logo {
+  font-family: 'Syncopate', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--amber);
+  letter-spacing: 0.08em;
+  line-height: 1.25;
+  flex-shrink: 0;
+}
+
+.hdr-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--border2);
+  flex-shrink: 0;
+}
+
+.price-block {
+  flex-shrink: 0;
+}
+
+.spy-price {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--white);
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.spy-chg {
+  font-size: 12px;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+.spy-label {
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.stat { flex-shrink: 0; }
+.stat-lbl {
+  font-size: 9px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 3px;
+}
+.stat-val {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--white);
+}
+
+.hdr-space { flex: 1; min-width: 0; }
+
+.stale-tag {
+  font-size: 9px;
+  color: var(--red);
+  letter-spacing: 0.1em;
+  animation: blink 1s step-start infinite;
+  flex-shrink: 0;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.cfg-btn {
+  background: none;
+  border: 1px solid var(--border2);
+  color: var(--dim2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 5px 12px;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  transition: border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.cfg-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+/* ── SIGNAL PANEL ─────────────────────────────────────── */
+.sigs {
+  display: flex;
+  align-items: stretch;
+  height: 76px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sig-block {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 18px;
+  border-right: 1px solid var(--border);
+  gap: 5px;
+}
+
+.sig-block:last-child { border-right: none; }
+
+.composite-block {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 20px;
+  border-right: 1px solid var(--border);
+  min-width: 240px;
+  flex-shrink: 0;
+}
+
+.comp-score {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  min-width: 80px;
+}
+
+.comp-right { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+
+.comp-lbl {
+  font-family: 'Syncopate', sans-serif;
+  font-size: 8px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+}
+
+.comp-status {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+}
+
+.sig-title {
+  font-size: 8px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.sig-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sig-score {
+  font-size: 22px;
+  font-weight: 700;
+  min-width: 50px;
+  letter-spacing: -0.02em;
+}
+
+.sig-detail {
+  font-size: 9px;
+  color: var(--dim2);
+  line-height: 1.7;
+}
+
+/* Score bar */
+.sbar {
+  position: relative;
+  height: 4px;
+  background: var(--border2);
+  border-radius: 2px;
+  overflow: hidden;
+  flex: 1;
+  min-width: 60px;
+}
+.sbar-fill {
+  position: absolute;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease, background 0.4s ease;
+}
+
+/* Signal block expand for indicators */
+.sig-expand { flex: 1; }
+
+/* ── CHART AREA ───────────────────────────────────────── */
+.chart-wrap {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  background: var(--bg);
+}
+.chart-inner { width: 100%; height: 100%; }
+
+.chart-legend {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 5;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  color: var(--dim2);
+}
+.legend-dot {
+  width: 16px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+/* ── STATUS BAR ───────────────────────────────────────── */
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px;
+  height: 22px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
+}
+.sdot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.sdot-g { background: var(--green); }
+.sdot-r { background: var(--red); }
+.sdot-a { background: var(--amber); }
+.sb-space { flex: 1; }
+
+.chart-controls {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 5;
+}
+.tf-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--dim2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 4px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  transition: all 0.12s;
+}
+.tf-btn:hover  { border-color: var(--amber); color: var(--amber); }
+.tf-btn.active { background: var(--amber); border-color: var(--amber); color: #000; font-weight: 700; }
+.zoom-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--dim2);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.12s;
+  line-height: 1;
+}
+.zoom-btn:hover { border-color: var(--text); color: var(--text); }
+.ctrl-sep { width: 1px; height: 18px; background: var(--border2); margin: 0 2px; }
+
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.82);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 4px;
+  padding: 28px;
+  width: 520px;
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal-hdr {
+  font-family: 'Syncopate', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--amber);
+  letter-spacing: 0.1em;
+  margin-bottom: 24px;
+}
+.modal-section { margin-bottom: 22px; }
+.modal-sec-title {
+  font-size: 8px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.field { margin-bottom: 12px; }
+.field label {
+  display: block;
+  font-size: 9px;
+  color: var(--dim2);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 8px 10px;
+  border-radius: 3px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.field input:focus { border-color: var(--amber); }
+.modal-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.btn { padding: 8px 20px; font-family: 'JetBrains Mono', monospace; font-size: 10px; border-radius: 3px; cursor: pointer; transition: all 0.15s; border: none; letter-spacing: 0.06em; }
+.btn-p { background: var(--amber); color: #000; font-weight: 700; }
+.btn-p:hover { background: #ffc840; }
+.btn-s { background: transparent; color: var(--dim2); border: 1px solid var(--border2); }
+.btn-s:hover { color: var(--text); border-color: var(--text); }
+
+/* Color utilities */
+.pos { color: var(--green); }
+.neg { color: var(--red); }
+.neu { color: var(--dim2); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ════════════════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════════════════ */
+const CFG_KEY          = 'spy_sniper_v2';
+const POLL_MS          = 5000;
+const LEVEL_POLL_MS    = 30000;
+const BAR_LIMIT        = 600;
+const VOL_BUCKET       = 0.50;
+const HVN_THRESHOLD    = 0.65;   // top 35% of volume buckets = HVN
+const ALERT_COOLDOWN   = 60000;  // min 1 alert per minute
+const COMPOSITE_THRESH = 1.4;    // |composite| >= this fires alert
+
+const DEFAULT_CFG = {
+  polygonKey: '', tradierToken: '', uwToken: '',
+  pushoverToken: '', pushoverUser: '',
+};
+
+/* ════════════════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════════════════ */
+function loadCfg() {
+  try { return { ...DEFAULT_CFG, ...JSON.parse(localStorage.getItem(CFG_KEY) || '{}') }; }
+  catch { return { ...DEFAULT_CFG }; }
+}
+function saveCfg(c) { localStorage.setItem(CFG_KEY, JSON.stringify(c)); }
+
+function fmt(n, d = 2) {
+  if (n === null || n === undefined || isNaN(n)) return '---';
+  return Number(n).toFixed(d);
+}
+function fmtSgn(n, d = 2) {
+  if (n === null || n === undefined || isNaN(n)) return '';
+  return (n >= 0 ? '+' : '') + Number(n).toFixed(d);
+}
+
+// Today's extended-hours range in ms (4 AM ET → now)
+function todayRange() {
+  const now = new Date();
+  // Approximate: offset UTC to ET (EST = -5, EDT = -4)
+  // We detect DST by checking Jan vs Jul offset difference
+  const jan = new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
+  const jul = new Date(now.getFullYear(), 6, 1).getTimezoneOffset();
+  const isDST = Math.min(jan, jul) !== jan;
+  const etOffset = isDST ? -4 : -5; // hours
+  const etNow = new Date(now.getTime() + (etOffset * 3600000) + (now.getTimezoneOffset() * 60000));
+  const sessionStart = new Date(etNow);
+  sessionStart.setHours(4, 0, 0, 0);
+  const fromMs = sessionStart.getTime() - (etOffset * 3600000) - (now.getTimezoneOffset() * 60000);
+  return { from: fromMs, to: now.getTime() };
+}
+
+// Is bar in regular session? (9:30–16:00 ET)
+function isRegularSession(unixSec) {
+  const d = new Date(unixSec * 1000);
+  const jan = new Date(d.getFullYear(), 0, 1).getTimezoneOffset();
+  const jul = new Date(d.getFullYear(), 6, 1).getTimezoneOffset();
+  const isDST = Math.min(jan, jul) !== jan;
+  const etOff = isDST ? -4 : -5;
+  const etDate = new Date(d.getTime() + etOff * 3600000 + d.getTimezoneOffset() * 60000);
+  const hm = etDate.getHours() * 60 + etDate.getMinutes();
+  return hm >= 570 && hm < 960; // 9:30 = 570, 16:00 = 960
+}
+
+/* ── Indicator calculations ──────────────────────────── */
+function calcEMA(closePts, period) {
+  if (!closePts || closePts.length < period) return [];
+  const k = 2 / (period + 1);
+  const out = [];
+  let ema = closePts.slice(0, period).reduce((s, p) => s + p.value, 0) / period;
+  for (let i = 0; i < closePts.length; i++) {
+    if (i < period - 1) continue;
+    if (i === period - 1) { out.push({ time: closePts[i].time, value: ema }); continue; }
+    ema = closePts[i].value * k + ema * (1 - k);
+    out.push({ time: closePts[i].time, value: ema });
+  }
+  return out;
+}
+
+function calcVWAP(bars) {
+  // Reset at 9:30 AM ET; only use regular session bars for the calculation
+  const regBars = bars.filter(b => isRegularSession(b.t));
+  if (regBars.length === 0) return [];
+  let cumTPV = 0, cumVol = 0;
+  return regBars.map(b => {
+    const tp = (b.h + b.l + b.c) / 3;
+    cumTPV += tp * b.v;
+    cumVol += b.v;
+    return { time: b.t, value: cumVol > 0 ? cumTPV / cumVol : b.c };
+  });
+}
+
+function buildVolumeProfile(bars) {
+  const profile = {};
+  bars.forEach(b => {
+    const steps = Math.max(1, Math.round((b.h - b.l) / VOL_BUCKET));
+    const volPerStep = b.v / steps;
+    for (let i = 0; i < steps; i++) {
+      const price = Math.round((b.l + i * VOL_BUCKET) / VOL_BUCKET) * VOL_BUCKET;
+      profile[price] = (profile[price] || 0) + volPerStep;
+    }
+  });
+  return profile;
+}
+
+function findHVNsLVNs(profile) {
+  const prices = Object.keys(profile).map(Number).sort((a, b) => a - b);
+  if (prices.length < 3) return { hvns: [], lvns: [] };
+  const vols = prices.map(p => profile[p]);
+  const maxVol = Math.max(...vols);
+  const thresh = maxVol * HVN_THRESHOLD;
+  const hvns = [], lvns = [];
+  for (let i = 1; i < prices.length - 1; i++) {
+    if (vols[i] >= vols[i - 1] && vols[i] >= vols[i + 1] && vols[i] >= thresh)
+      hvns.push({ price: prices[i], volume: vols[i] });
+    if (vols[i] <= vols[i - 1] && vols[i] <= vols[i + 1])
+      lvns.push({ price: prices[i], volume: vols[i] });
+  }
+  return { hvns, lvns };
+}
+
+/* ── Aggregate 1m bars into N-minute bars ──── */
+function aggregateBars(bars1m, minutes) {
+  if (minutes <= 1) return bars1m;
+  const out = [];
+  for (let i = 0; i < bars1m.length; i += minutes) {
+    const slice = bars1m.slice(i, i + minutes);
+    if (!slice.length) continue;
+    out.push({
+      t: slice[0].t,
+      o: slice[0].o,
+      h: Math.max(...slice.map(b => b.h)),
+      l: Math.min(...slice.map(b => b.l)),
+      c: slice[slice.length - 1].c,
+      v: slice.reduce((s, b) => s + b.v, 0),
+    });
+  }
+  return out;
+}
+
+
+   Measures acceleration of near-term fear vs medium-term
+═══════════════════════════════════════════════════════════ */
+function computeVixTerm(vix9d, vix30, history) {
+  if (!vix9d || !vix30 || vix30 === 0)
+    return { score: 0, ratio: null, roc: null, status: 'AWAITING DATA', history };
+
+  const ratio = vix9d / vix30;
+  const hist  = [...history, ratio].slice(-12);
+  const roc   = hist.length >= 2
+    ? ((hist[hist.length - 1] - hist[hist.length - 2]) / hist[hist.length - 2]) * 100
+    : 0;
+
+  let score = 0, status = '';
+
+  if (ratio > 1.08) {
+    // Strong backwardation — acute fear
+    if (roc < -0.6)  { score =  1.8; status = 'FEAR PEAK → LONG'; }
+    else if (roc > 0.6) { score = -1.8; status = 'FEAR RISING → SHORT'; }
+    else              { score = -0.6; status = 'BACKWARDATION'; }
+  } else if (ratio >= 0.93) {
+    // Near par
+    if (roc < -0.4)  { score =  1.0; status = 'NORMALIZING ↑'; }
+    else if (roc > 0.4) { score = -1.0; status = 'STRESS BUILDING'; }
+    else              { score =  0.0; status = 'AT PAR'; }
+  } else {
+    // Normal contango
+    if (roc > 0.4)   { score = -0.5; status = 'CONTANGO NARROWING'; }
+    else             { score =  0.3; status = 'CONTANGO — CALM'; }
+  }
+
+  return { score: Math.max(-2, Math.min(2, score)), ratio, roc, status, history: hist };
+}
+
+/* ════════════════════════════════════════════════════════
+   SIGNAL 3: HVN GAP CLEARANCE
+   Detects price breaking through an HVN into a LVN vacuum
+═══════════════════════════════════════════════════════════ */
+function computeHvnClearance(bars, price, prevPrice) {
+  if (!bars || bars.length < 30 || !price)
+    return { score: 0, status: 'BUILDING PROFILE', hvns: [], lvns: [] };
+
+  const profile    = buildVolumeProfile(bars);
+  const { hvns, lvns } = findHVNsLVNs(profile);
+
+  if (hvns.length === 0)
+    return { score: 0, status: 'NO HVNs FOUND', hvns, lvns };
+
+  const move   = prevPrice ? price - prevPrice : 0;
+  const inLvn  = lvns.some(l => Math.abs(l.price - price) <= VOL_BUCKET * 1.8);
+
+  const hvnBelow = hvns.filter(h => h.price <= price && h.price >= price - 2.5)
+                       .sort((a, b) => b.price - a.price)[0];
+  const hvnAbove = hvns.filter(h => h.price >= price && h.price <= price + 2.5)
+                       .sort((a, b) => a.price - b.price)[0];
+
+  let score = 0, status = 'NEUTRAL';
+
+  if (inLvn && move > 0 && hvnBelow) {
+    const strength = Math.min(1.0, (price - hvnBelow.price) / 1.0);
+    score  = 1.0 + strength;
+    status = `CLEARED ${fmt(hvnBelow.price)} ↑`;
+  } else if (inLvn && move < 0 && hvnAbove) {
+    const strength = Math.min(1.0, (hvnAbove.price - price) / 1.0);
+    score  = -(1.0 + strength);
+    status = `CLEARED ${fmt(hvnAbove.price)} ↓`;
+  } else if (inLvn) {
+    score  = move >= 0 ? 0.5 : -0.5;
+    status = 'IN LVN GAP';
+  } else if (hvnAbove) {
+    status = `HVN RESIST @ ${fmt(hvnAbove.price)}`;
+  } else if (hvnBelow) {
+    status = `HVN SUPPORT @ ${fmt(hvnBelow.price)}`;
+  }
+
+  return { score: Math.max(-2, Math.min(2, score)), status, hvns, lvns };
+}
+
+/* ════════════════════════════════════════════════════════
+   COMPOSITE
+═══════════════════════════════════════════════════════════ */
+function composite(s2, s3) {
+  return s2 * 0.50 + s3 * 0.50;
+}
+
+/* ════════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════════ */
+function scoreColor(s) {
+  if (s > 0.7)  return 'var(--green)';
+  if (s < -0.7) return 'var(--red)';
+  return 'var(--amber)';
+}
+function scoreClass(s) {
+  return s > 0.3 ? 'pos' : s < -0.3 ? 'neg' : 'neu';
+}
+
+/* ════════════════════════════════════════════════════════
+   SCORE BAR COMPONENT
+═══════════════════════════════════════════════════════════ */
+function SBar({ score, h = 4 }) {
+  const pct = ((score + 2) / 4) * 100;
+  const col = scoreColor(score);
+  return (
+    <div className="sbar" style={{ height: h }}>
+      <div className="sbar-fill" style={{ width: `${pct}%`, background: col }} />
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════
+   SETTINGS MODAL
+═══════════════════════════════════════════════════════════ */
+function SettingsModal({ cfg, onSave, onClose }) {
+  const [f, setF] = useState({ ...cfg });
+  const set = (k, v) => setF(p => ({ ...p, [k]: v }));
+
+  return (
+    <div className="overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-hdr">⚙ CONFIGURATION</div>
+
+        <div className="modal-section">
+          <div className="modal-sec-title">Polygon.io — Primary data source</div>
+          <div className="field">
+            <label>Paid API Key</label>
+            <input type="password" value={f.polygonKey}
+              onChange={e => set('polygonKey', e.target.value)}
+              placeholder="Your Polygon.io API key..." />
+          </div>
+        </div>
+
+        <div className="modal-section">
+          <div className="modal-sec-title">Tradier — Real-time quote</div>
+          <div className="field">
+            <label>Production Access Token</label>
+            <input type="password" value={f.tradierToken}
+              onChange={e => set('tradierToken', e.target.value)}
+              placeholder="Your Tradier production token..." />
+          </div>
+        </div>
+
+        <div className="modal-section">
+          <div className="modal-sec-title">Unusual Whales — GEX levels</div>
+          <div className="field">
+            <label>Basic API Token</label>
+            <input type="password" value={f.uwToken}
+              onChange={e => set('uwToken', e.target.value)}
+              placeholder="Your UW API token..." />
+          </div>
+        </div>
+
+        <div className="modal-section">
+          <div className="modal-sec-title">Pushover — Alerts</div>
+          <div className="field">
+            <label>App Token</label>
+            <input type="password" value={f.pushoverToken}
+              onChange={e => set('pushoverToken', e.target.value)}
+              placeholder="Pushover app token..." />
+          </div>
+          <div className="field">
+            <label>User Key</label>
+            <input type="password" value={f.pushoverUser}
+              onChange={e => set('pushoverUser', e.target.value)}
+              placeholder="Pushover user key..." />
+          </div>
+          <div style={{ fontSize: 9, color: 'var(--dim)', marginTop: 4 }}>
+            Alert fires when |composite| ≥ {COMPOSITE_THRESH}, max 1 per minute.
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn-s" onClick={onClose}>CANCEL</button>
+          <button className="btn btn-p" onClick={() => { onSave(f); onClose(); }}>SAVE &amp; APPLY</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════
+   CHART COMPONENT (lightweight-charts)
+═══════════════════════════════════════════════════════════ */
+function ChartPanel({ bars, ema8, ema21, vwap, hvns, levels, tf, onTfChange }) {
+  const wrapRef    = useRef(null);
+  const chartRef   = useRef(null);
+  const candleRef  = useRef(null);
+  const ema8Ref    = useRef(null);
+  const ema21Ref   = useRef(null);
+  const vwapRef    = useRef(null);
+  const plinesRef  = useRef([]);
+  const initedRef  = useRef(false);
+
+  /* Create chart once */
+  useEffect(() => {
+    if (!wrapRef.current || initedRef.current) return;
+    initedRef.current = true;
+
+    const LC = LightweightCharts;
+    const chart = LC.createChart(wrapRef.current, {
+      layout: {
+        background: { color: '#040507' },
+        textColor: '#384550',
+        fontSize: 10,
+        fontFamily: "'JetBrains Mono', monospace",
+      },
+      grid: {
+        vertLines: { color: '#0c1018', style: LC.LineStyle.Solid },
+        horzLines: { color: '#0c1018', style: LC.LineStyle.Solid },
+      },
+      crosshair: {
+        mode: LC.CrosshairMode.Normal,
+        vertLine: { color: '#2a3540', labelBackgroundColor: '#0d1117' },
+        horzLine: { color: '#2a3540', labelBackgroundColor: '#0d1117' },
+      },
+      rightPriceScale: { borderColor: '#181e26' },
+      timeScale: {
+        borderColor: '#181e26',
+        timeVisible: true,
+        secondsVisible: false,
+        rightOffset: 40,     // space to right = centers current bar
+        barSpacing: 6,
+      },
+      handleScroll: true,
+      handleScale: { mouseWheel: true, pinch: true },
+    });
+
+    const candle = chart.addCandlestickSeries({
+      upColor:        '#18d46c',
+      downColor:      '#f02848',
+      borderUpColor:  '#18d46c',
+      borderDownColor:'#f02848',
+      wickUpColor:    '#18d46c',
+      wickDownColor:  '#f02848',
+    });
+
+    const e8 = chart.addLineSeries({
+      color: '#f5a623', lineWidth: 1,
+      priceLineVisible: false, lastValueVisible: true, title: 'EMA8',
+    });
+
+    const e21 = chart.addLineSeries({
+      color: '#3490ff', lineWidth: 1,
+      priceLineVisible: false, lastValueVisible: true, title: 'EMA21',
+    });
+
+    const vwapSeries = chart.addLineSeries({
+      color: '#e0eaee', lineWidth: 1,
+      lineStyle: LC.LineStyle.Dashed,
+      priceLineVisible: false, lastValueVisible: true, title: 'VWAP',
+    });
+
+    chartRef.current  = chart;
+    candleRef.current = candle;
+    ema8Ref.current   = e8;
+    ema21Ref.current  = e21;
+    vwapRef.current   = vwapSeries;
+
+    const resize = () => {
+      if (wrapRef.current) {
+        chart.applyOptions({
+          width:  wrapRef.current.clientWidth,
+          height: wrapRef.current.clientHeight,
+        });
+      }
+    };
+    window.addEventListener('resize', resize);
+    resize();
+
+    return () => {
+      window.removeEventListener('resize', resize);
+      if (chartRef.current) { chartRef.current.remove(); chartRef.current = null; initedRef.current = false; }
+    };
+  }, []);
+
+  /* Update candles */
+  useEffect(() => {
+    if (!candleRef.current || !bars.length) return;
+    candleRef.current.setData(bars.map(b => ({
+      time: b.t, open: b.o, high: b.h, low: b.l, close: b.c,
+    })));
+    // Center current price: scroll so latest bar is slightly left of center
+    if (chartRef.current) {
+      chartRef.current.timeScale().scrollToRealTime();
+    }
+  }, [bars]);
+
+  /* Update EMAs */
+  useEffect(() => {
+    if (ema8Ref.current && ema8?.length)  ema8Ref.current.setData(ema8);
+  }, [ema8]);
+  useEffect(() => {
+    if (ema21Ref.current && ema21?.length) ema21Ref.current.setData(ema21);
+  }, [ema21]);
+  useEffect(() => {
+    if (vwapRef.current && vwap?.length)  vwapRef.current.setData(vwap);
+  }, [vwap]);
+
+  /* Update horizontal levels */
+  useEffect(() => {
+    if (!candleRef.current) return;
+    const LC = LightweightCharts;
+
+    // Clear old lines
+    plinesRef.current.forEach(pl => { try { candleRef.current.removePriceLine(pl); } catch {} });
+    plinesRef.current = [];
+
+    const addLine = (price, color, title, width = 1, style = LC.LineStyle.Dashed) => {
+      if (!price || isNaN(price)) return;
+      const pl = candleRef.current.createPriceLine({
+        price, color, lineWidth: width, lineStyle: style,
+        axisLabelVisible: true, title,
+      });
+      plinesRef.current.push(pl);
+    };
+
+    // HVNs — subtle dotted lines
+    (hvns || []).slice(0, 12).forEach((h, i) =>
+      addLine(h.price, '#1e2a35', `HVN${i + 1}`, 1, LC.LineStyle.Dotted));
+
+    // Levels
+    addLine(levels.cwall, '#18d46c', 'CWALL', 1, LC.LineStyle.Dashed);
+    addLine(levels.pwall, '#f02848', 'PWALL', 1, LC.LineStyle.Dashed);
+    addLine(levels.flip,  '#f5a623', 'FLIP',  2, LC.LineStyle.Solid);
+
+  }, [hvns, levels]);
+
+  const zoomIn  = () => {
+    if (!chartRef.current) return;
+    const ts = chartRef.current.timeScale();
+    const cur = ts.options().barSpacing ?? 6;
+    ts.applyOptions({ barSpacing: Math.min(cur * 1.4, 40) });
+  };
+  const zoomOut = () => {
+    if (!chartRef.current) return;
+    const ts = chartRef.current.timeScale();
+    const cur = ts.options().barSpacing ?? 6;
+    ts.applyOptions({ barSpacing: Math.max(cur / 1.4, 2) });
+  };
+
+  return (
+    <div className="chart-wrap">
+      <div ref={wrapRef} className="chart-inner" />
+
+      {/* TF + Zoom controls */}
+      <div className="chart-controls">
+        {[1, 5, 15, 30].map(t => (
+          <button key={t} className={`tf-btn${tf === t ? ' active' : ''}`}
+            onClick={() => onTfChange(t)}>{t}M</button>
+        ))}
+        <div className="ctrl-sep" />
+        <button className="zoom-btn" onClick={zoomIn}  title="Zoom in">+</button>
+        <button className="zoom-btn" onClick={zoomOut} title="Zoom out">−</button>
+      </div>
+
+      {/* Legend */}
+      <div className="chart-legend">
+        <div className="legend-item">
+          <div className="legend-dot" style={{ background: '#f5a623' }} />EMA 8
+        </div>
+        <div className="legend-item">
+          <div className="legend-dot" style={{ background: '#3490ff' }} />EMA 21
+        </div>
+        <div className="legend-item">
+          <div className="legend-dot" style={{ background: '#e0eaee', opacity: 0.5 }} />VWAP
+        </div>
+        {levels.cwall && (
+          <div className="legend-item">
+            <div className="legend-dot" style={{ background: '#18d46c' }} />CWall {fmt(levels.cwall)}
+          </div>
+        )}
+        {levels.flip && (
+          <div className="legend-item">
+            <div className="legend-dot" style={{ background: '#f5a623' }} />Flip {fmt(levels.flip)}
+          </div>
+        )}
+        {levels.pwall && (
+          <div className="legend-item">
+            <div className="legend-dot" style={{ background: '#f02848' }} />PWall {fmt(levels.pwall)}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════
+   MAIN APP
+═══════════════════════════════════════════════════════════ */
+function App() {
+  const [cfg, setCfg]           = useState(loadCfg);
+  const [showCfg, setShowCfg]   = useState(false);
+  const [tf, setTf]             = useState(1); // 1 | 5 | 15 | 30
+
+  // Raw data
+  const [spyPrice, setSpyPrice] = useState(null);
+  const [spyChange, setSpyChange] = useState(null);
+  const [vix, setVix]           = useState(null);
+  const [vix9d, setVix9d]       = useState(null);
+  const [raw1m, setRaw1m]       = useState([]); // always 1m
+  const [bars, setBars]         = useState([]);  // aggregated per tf
+  const [levels, setLevels]     = useState({ cwall: null, pwall: null, flip: null });
+  const [lastUpdate, setLastUpdate] = useState(null);
+  const [isStale, setIsStale]   = useState(false);
+  const [ds, setDs]             = useState({ poly: false, tradier: false, uw: false });
+
+  // Computed indicators
+  const [ema8, setEma8]   = useState([]);
+  const [ema21, setEma21] = useState([]);
+  const [vwap, setVwap]   = useState([]);
+  const [hvnData, setHvnData] = useState({ hvns: [], lvns: [] });
+
+  // Signals
+  const ratioHistRef = useRef([]);
+  const [sig2, setSig2] = useState({ score: 0, status: 'LOADING', ratio: null, roc: null });
+  const [sig3, setSig3] = useState({ score: 0, status: 'LOADING', hvns: [], lvns: [] });
+  const prevPriceRef   = useRef(null);
+
+  // Alerts
+  const lastAlertRef = useRef(0);
+
+  /* ── Pushover ─────────────────────────────────── */
+  const pushAlert = useCallback(async (msg, title = 'SPY SNIPER') => {
+    if (!cfg.pushoverToken || !cfg.pushoverUser) return;
+    if (Date.now() - lastAlertRef.current < ALERT_COOLDOWN) return;
+    lastAlertRef.current = Date.now();
+    try {
+      await fetch('https://api.pushover.net/1/messages.json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: cfg.pushoverToken, user: cfg.pushoverUser, title, message: msg,
+        }),
+      });
+    } catch {}
+  }, [cfg.pushoverToken, cfg.pushoverUser]);
+
+  /* ── Polygon bars (SPY 1-min, extended hours) ─── */
+  const fetchBars = useCallback(async () => {
+    if (!cfg.polygonKey) return;
+    const { from, to } = todayRange();
+    try {
+      const r = await fetch(
+        `https://api.polygon.io/v2/aggs/ticker/SPY/range/1/minute/${from}/${to}` +
+        `?adjusted=true&sort=asc&limit=${BAR_LIMIT}&extended_hours=true&apiKey=${cfg.polygonKey}`
+      );
+      const d = await r.json();
+      if (d.results?.length) {
+        const formatted = d.results.map(b => ({
+          t: Math.floor(b.t / 1000), o: b.o, h: b.h, l: b.l, c: b.c, v: b.v,
+        }));
+        setRaw1m(formatted);
+
+        // Price from latest bar (Tradier may override)
+        const last = formatted[formatted.length - 1];
+        setSpyPrice(p => p || last.c);
+        setSpyChange(last.c - formatted[0].o);
+        setDs(s => ({ ...s, poly: true }));
+        setLastUpdate(Date.now());
+        setIsStale(false);
+      }
+    } catch { setDs(s => ({ ...s, poly: false })); }
+  }, [cfg.polygonKey]);
+
+  /* ── Tradier real-time quote ─────────────────── */
+  const fetchTradier = useCallback(async () => {
+    if (!cfg.tradierToken) return;
+    try {
+      const r = await fetch(
+        'https://api.tradier.com/v1/markets/quotes?symbols=SPY&greeks=false',
+        { headers: { Authorization: `Bearer ${cfg.tradierToken}`, Accept: 'application/json' } }
+      );
+      const d = await r.json();
+      const q = d?.quotes?.quote;
+      if (q) {
+        const price = q.last || q.bid || q.ask;
+        if (price) {
+          setSpyPrice(price);
+          setSpyChange(q.change ?? null);
+          setDs(s => ({ ...s, tradier: true }));
+          setLastUpdate(Date.now());
+          setIsStale(false);
+        }
+      }
+    } catch { setDs(s => ({ ...s, tradier: false })); }
+  }, [cfg.tradierToken]);
+
+  /* ── Polygon VIX + VIX9D ────────────────────── */
+  const fetchVix = useCallback(async () => {
+    if (!cfg.polygonKey) return;
+
+    const getIndex = async (ticker) => {
+      // Try snapshot first
+      try {
+        const r = await fetch(
+          `https://api.polygon.io/v3/snapshot/indices/${encodeURIComponent(ticker)}?apiKey=${cfg.polygonKey}`
+        );
+        const d = await r.json();
+        const item = d.results?.[0] ?? d.results ?? d;
+        const val = item?.session?.close ?? item?.value ?? item?.last_quote?.midpoint ?? null;
+        if (val) return parseFloat(val);
+      } catch {}
+      // Fallback: previous day close
+      try {
+        const r2 = await fetch(
+          `https://api.polygon.io/v2/aggs/ticker/${encodeURIComponent(ticker)}/prev?adjusted=true&apiKey=${cfg.polygonKey}`
+        );
+        const d2 = await r2.json();
+        const val2 = d2.results?.[0]?.c ?? null;
+        if (val2) return parseFloat(val2);
+      } catch {}
+      return null;
+    };
+
+    const [v30, v9d] = await Promise.all([getIndex('I:VIX'), getIndex('I:VIX9D')]);
+    if (v30 !== null) setVix(v30);
+    if (v9d !== null) setVix9d(v9d);
+  }, [cfg.polygonKey]);
+
+  /* ── Unusual Whales GEX levels ──────────────── */
+  const fetchLevels = useCallback(async () => {
+    if (!cfg.uwToken) return;
+    const headers = { Authorization: `Bearer ${cfg.uwToken}`, Accept: 'application/json' };
+
+    // Try multiple known UW Basic-tier endpoints
+    const endpoints = [
+      'https://api.unusualwhales.com/api/stock/SPY/greek-exposure',
+      'https://api.unusualwhales.com/api/etf/SPY/gex',
+      'https://api.unusualwhales.com/api/market/gex?ticker=SPY',
+      'https://api.unusualwhales.com/api/stock/SPY/gex',
+    ];
+
+    for (const url of endpoints) {
+      try {
+        const r = await fetch(url, { headers });
+        if (!r.ok) continue;
+        const d = await r.json();
+        const src = d?.data ?? d;
+        // Normalize field names across endpoint variations
+        const cwall = src?.call_wall ?? src?.callWall ?? src?.c_wall ?? src?.call_resistance ?? null;
+        const pwall = src?.put_wall  ?? src?.putWall  ?? src?.p_wall ?? src?.put_support     ?? null;
+        const flip  = src?.gamma_flip ?? src?.gammaFlip ?? src?.flip ?? src?.zero_gamma      ?? null;
+        if (cwall !== null || pwall !== null || flip !== null) {
+          setLevels({
+            cwall: cwall ? parseFloat(cwall) : null,
+            pwall: pwall ? parseFloat(pwall) : null,
+            flip:  flip  ? parseFloat(flip)  : null,
+          });
+          setDs(s => ({ ...s, uw: true }));
+          return;
+        }
+      } catch {}
+    }
+    setDs(s => ({ ...s, uw: false }));
+  }, [cfg.uwToken]);
+
+  /* ── Re-aggregate bars when TF or raw data changes ─ */
+  useEffect(() => {
+    if (!raw1m.length) return;
+    const agg = aggregateBars(raw1m, tf);
+    setBars(agg);
+    const pts = agg.map(b => ({ time: b.t, value: b.c }));
+    setEma8(calcEMA(pts, 8));
+    setEma21(calcEMA(pts, 21));
+    setVwap(calcVWAP(raw1m)); // VWAP always from 1m
+    const { hvns, lvns } = findHVNsLVNs(buildVolumeProfile(raw1m));
+    setHvnData({ hvns, lvns });
+  }, [raw1m, tf]);
+
+  /* ── Compute signals ─────────────────────────── */
+  useEffect(() => {
+    if (vix && vix9d) {
+      const res = computeVixTerm(vix9d, vix, ratioHistRef.current);
+      ratioHistRef.current = res.history;
+      setSig2(res);
+    }
+  }, [vix, vix9d]);
+
+  useEffect(() => {
+    if (bars.length && spyPrice) {
+      setSig3(computeHvnClearance(bars, spyPrice, prevPriceRef.current));
+      prevPriceRef.current = spyPrice;
+    }
+  }, [bars, spyPrice]);
+
+  /* ── Alert on strong composite ───────────────── */
+  const comp = composite(sig2.score, sig3.score);
+  const prevCompRef = useRef(0);
+  useEffect(() => {
+    const wasBelow = Math.abs(prevCompRef.current) < COMPOSITE_THRESH;
+    const isAbove  = Math.abs(comp) >= COMPOSITE_THRESH;
+    if (wasBelow && isAbove && spyPrice) {
+      const dir = comp > 0 ? 'LONG 🟢' : 'SHORT 🔴';
+      pushAlert(
+        `${dir} — Score: ${fmtSgn(comp, 1)}\nSPY: ${fmt(spyPrice)}\n` +
+        `VIX Term: ${sig2.status}\nHVN: ${sig3.status}`,
+        'SPY SNIPER ALERT'
+      );
+    }
+    prevCompRef.current = comp;
+  }, [comp, spyPrice, sig2.status, sig3.status, pushAlert]);
+
+  /* ── Stale data check ────────────────────────── */
+  useEffect(() => {
+    const t = setInterval(() => {
+      if (lastUpdate && Date.now() - lastUpdate > 15000) setIsStale(true);
+    }, 5000);
+    return () => clearInterval(t);
+  }, [lastUpdate]);
+
+  /* ── Main 5s poll ────────────────────────────── */
+  useEffect(() => {
+    const run = () => Promise.allSettled([fetchBars(), fetchTradier(), fetchVix()]);
+    run();
+    const t = setInterval(run, POLL_MS);
+    return () => clearInterval(t);
+  }, [fetchBars, fetchTradier, fetchVix]);
+
+  /* ── Level 30s poll ─────────────────────────── */
+  useEffect(() => {
+    fetchLevels();
+    const t = setInterval(fetchLevels, LEVEL_POLL_MS);
+    return () => clearInterval(t);
+  }, [fetchLevels]);
+
+  /* ── Auto-open settings if no keys ──────────── */
+  useEffect(() => {
+    if (!cfg.polygonKey && !cfg.tradierToken) setShowCfg(true);
+  }, []);
+
+  const handleSave = c => { saveCfg(c); setCfg(c); };
+
+  const vwapLast = vwap.length ? vwap[vwap.length - 1]?.value : null;
+  const noKeys   = !cfg.polygonKey && !cfg.tradierToken;
+
+  return (
+    <>
+      {/* ──── HEADER ──────────────────────────────── */}
+      <div className="hdr">
+        <div className="logo">SPY<br/>SNIPER</div>
+        <div className="hdr-divider" />
+
+        {/* Big price */}
+        <div className="price-block">
+          <div>
+            <span className="spy-price">{fmt(spyPrice)}</span>
+            {spyChange !== null && (
+              <span className={`spy-chg ${spyChange >= 0 ? 'pos' : 'neg'}`}>
+                {fmtSgn(spyChange)}
+              </span>
+            )}
+          </div>
+          <div className="spy-label">SPY</div>
+        </div>
+
+        <div className="hdr-divider" />
+
+        <div className="stat">
+          <div className="stat-lbl">VIX</div>
+          <div className="stat-val" style={{ color: vix > 22 ? 'var(--red)' : vix > 16 ? 'var(--amber)' : 'var(--green)' }}>
+            {fmt(vix)}
+          </div>
+        </div>
+        <div className="stat">
+          <div className="stat-lbl">VIX9D</div>
+          <div className="stat-val">{fmt(vix9d)}</div>
+        </div>
+        <div className="stat">
+          <div className="stat-lbl">9D/30D</div>
+          <div className="stat-val" style={{ color: vix && vix9d ? (vix9d / vix > 1 ? 'var(--red)' : 'var(--green)') : 'var(--dim)' }}>
+            {vix && vix9d ? fmt(vix9d / vix, 3) : '---'}
+          </div>
+        </div>
+
+        <div className="hdr-divider" />
+
+        <div className="stat">
+          <div className="stat-lbl">VWAP</div>
+          <div className="stat-val">{fmt(vwapLast)}</div>
+        </div>
+
+        <div className="hdr-divider" />
+
+        <div className="stat">
+          <div className="stat-lbl">CWALL</div>
+          <div className="stat-val pos">{fmt(levels.cwall)}</div>
+        </div>
+        <div className="stat">
+          <div className="stat-lbl">PWALL</div>
+          <div className="stat-val neg">{fmt(levels.pwall)}</div>
+        </div>
+        <div className="stat">
+          <div className="stat-lbl">FLIP</div>
+          <div className="stat-val" style={{ color: 'var(--amber)' }}>{fmt(levels.flip)}</div>
+        </div>
+
+        <div className="hdr-space" />
+        {isStale && <div className="stale-tag">⚠ STALE</div>}
+        <button className="cfg-btn" onClick={() => setShowCfg(true)}>⚙ CONFIG</button>
+      </div>
+
+      {/* ──── SIGNAL PANEL ────────────────────────── */}
+      <div className="sigs">
+
+        {/* Composite */}
+        <div className="composite-block">
+          <div>
+            <div className="comp-lbl">COMPOSITE</div>
+            <div className="comp-score" style={{ color: scoreColor(comp) }}>
+              {fmtSgn(comp, 1)}
+            </div>
+          </div>
+          <div className="comp-right">
+            <SBar score={comp} h={7} />
+            <div className="comp-status" style={{ color: scoreColor(comp) }}>
+              {Math.abs(comp) >= COMPOSITE_THRESH
+                ? '⚡ SIGNAL ACTIVE'
+                : Math.abs(comp) >= 0.7
+                ? '○ BUILDING'
+                : '· NEUTRAL'}
+            </div>
+          </div>
+        </div>
+
+        {/* Signal 2 */}
+        <div className="sig-block sig-expand">
+          <div className="sig-title">VIX TERM STRUCTURE  ·  S2</div>
+          <div className="sig-row">
+            <div className="sig-score" style={{ color: scoreColor(sig2.score) }}>
+              {fmtSgn(sig2.score, 1)}
+            </div>
+            <SBar score={sig2.score} />
+          </div>
+          <div className="sig-detail">
+            {sig2.ratio
+              ? `Ratio ${fmt(sig2.ratio, 3)}  ·  ROC ${fmtSgn(sig2.roc, 2)}%  ·  `
+              : ''}
+            <span style={{ color: scoreColor(sig2.score) }}>{sig2.status}</span>
+          </div>
+        </div>
+
+        {/* Signal 3 */}
+        <div className="sig-block sig-expand">
+          <div className="sig-title">HVN CLEARANCE  ·  S3</div>
+          <div className="sig-row">
+            <div className="sig-score" style={{ color: scoreColor(sig3.score) }}>
+              {fmtSgn(sig3.score, 1)}
+            </div>
+            <SBar score={sig3.score} />
+          </div>
+          <div className="sig-detail">
+            {sig3.hvns?.length
+              ? `${sig3.hvns.length} HVNs  ·  ${sig3.lvns?.length || 0} LVNs  ·  `
+              : ''}
+            <span style={{ color: scoreColor(sig3.score) }}>{sig3.status}</span>
+          </div>
+        </div>
+
+        {/* Alert status */}
+        <div className="sig-block" style={{ minWidth: 150, flexShrink: 0 }}>
+          <div className="sig-title">ALERTS</div>
+          <div style={{ fontSize: 10, color: 'var(--dim2)', marginTop: 3 }}>
+            <span className={`sdot ${cfg.pushoverToken ? 'sdot-g' : 'sdot-r'}`} />
+            Pushover {cfg.pushoverToken ? 'ARMED' : 'off'}
+          </div>
+          <div style={{ fontSize: 9, color: 'var(--dim)', marginTop: 5 }}>
+            Threshold ±{COMPOSITE_THRESH}
+          </div>
+        </div>
+      </div>
+
+      {/* ──── CHART ───────────────────────────────── */}
+      <ChartPanel
+        bars={bars}
+        ema8={ema8}
+        ema21={ema21}
+        vwap={vwap}
+        hvns={hvnData.hvns}
+        levels={levels}
+        tf={tf}
+        onTfChange={setTf}
+      />
+
+      {/* ──── STATUS BAR ──────────────────────────── */}
+      <div className="status-bar">
+        <span><span className={`sdot ${ds.poly ? 'sdot-g' : 'sdot-r'}`} />POLYGON</span>
+        <span><span className={`sdot ${ds.tradier ? 'sdot-g' : 'sdot-r'}`} />TRADIER</span>
+        <span><span className={`sdot ${ds.uw ? 'sdot-g' : 'sdot-r'}`} />UW</span>
+        <div className="sb-space" />
+        <span>POLL 5s</span>
+        <span>{lastUpdate ? new Date(lastUpdate).toLocaleTimeString() : '--:--:--'}</span>
+        <span>{bars.length ? `${bars.length} bars` : 'NO DATA'}</span>
+        <span>{hvnData.hvns.length ? `${hvnData.hvns.length} HVNs` : ''}</span>
+      </div>
+
+      {/* ──── SETTINGS MODAL ──────────────────────── */}
+      {showCfg && (
+        <SettingsModal cfg={cfg} onSave={handleSave} onClose={() => setShowCfg(false)} />
+      )}
+
+      {/* ──── NO-KEYS SPLASH ──────────────────────── */}
+      {noKeys && !showCfg && (
+        <div className="overlay">
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+            <div style={{ fontFamily: 'Syncopate, sans-serif', fontSize: 16, color: 'var(--amber)', letterSpacing: '0.1em' }}>
+              SPY SNIPER
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--dim2)' }}>Configure API keys to begin</div>
+            <button className="btn btn-p" onClick={() => setShowCfg(true)}>OPEN SETTINGS</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
