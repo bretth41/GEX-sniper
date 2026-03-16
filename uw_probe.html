@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UW PROXY PROBE</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:monospace;background:#040507;color:#a8bcc4;padding:16px;font-size:13px}
+h1{color:#f5a623;font-size:15px;margin-bottom:4px}
+.sub{color:#506070;font-size:11px;margin-bottom:16px;line-height:1.6}
+label{display:block;color:#506070;font-size:10px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.1em}
+input{width:100%;max-width:640px;background:#0d1117;border:1px solid #242d36;color:#e0eaee;
+  font-family:monospace;font-size:12px;padding:10px;border-radius:4px;
+  box-sizing:border-box;margin-bottom:12px;-webkit-appearance:none}
+input:focus{outline:none;border-color:#f5a623}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.btn{border:none;padding:11px 20px;font-family:monospace;font-size:11px;font-weight:700;border-radius:4px;cursor:pointer;letter-spacing:.06em}
+.btn-all{background:#f5a623;color:#000}
+.btn-copy{background:#242d36;color:#a8bcc4}
+.test{border:1px solid #181e26;border-radius:4px;padding:14px;margin-bottom:12px}
+.test-hdr{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.test-num{background:#242d36;color:#f5a623;font-size:10px;font-weight:700;padding:2px 7px;border-radius:2px;flex-shrink:0;margin-top:1px}
+.test-title{font-size:11px;color:#e0eaee;font-weight:700}
+.test-url{font-size:10px;color:#384550;margin-top:2px;word-break:break-all}
+.test-purpose{font-size:10px;color:#506070;margin-top:2px}
+.run-btn{margin-left:auto;flex-shrink:0;background:#0d1117;border:1px solid #242d36;color:#a8bcc4;
+  font-family:monospace;font-size:10px;padding:5px 12px;border-radius:3px;cursor:pointer;white-space:nowrap}
+.run-btn:hover{border-color:#f5a623;color:#f5a623}
+.result{background:#080b0e;border-radius:3px;padding:10px;font-size:10px;line-height:1.8;
+  white-space:pre-wrap;word-break:break-all;max-height:260px;overflow-y:auto;color:#506070;margin-top:6px}
+.result.ok{color:#a8bcc4}
+.result.err{color:#f02848}
+.fields{font-size:10px;color:#3490ff;margin-top:6px;line-height:1.8}
+#summary{background:#0d1117;border:1px solid #242d36;border-radius:4px;padding:14px;margin-bottom:16px;font-size:11px;line-height:2;display:none}
+#summary.show{display:block}
+.sum-ok{color:#18d46c}.sum-err{color:#f02848}.sum-warn{color:#f5a623}
+</style>
+</head>
+<body>
+<h1>UW PROXY PROBE</h1>
+<p class="sub">Tests UW endpoints through your Cloudflare proxy. No CORS issues.<br/>
+<strong style="color:#f5a623">Enter your proxy base URL then run all tests.</strong></p>
+
+<label>Cloudflare Proxy URL (no trailing slash)</label>
+<input type="text" id="proxy" value="https://spy-edge-tradier-proxy.ddyq77hxwp.workers.dev"
+  autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+
+<div class="btn-row">
+  <button class="btn btn-all" onclick="runAll()">&#9654; RUN ALL 7 TESTS</button>
+  <button class="btn btn-copy" onclick="copyResults()">&#9016; COPY ALL RESULTS</button>
+</div>
+
+<div id="summary"></div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T1</div>
+    <div><div class="test-title">Spot Exposures by Strike</div>
+    <div class="test-url">/uw/api/stock/SPY/spot-exposures/strike</div>
+    <div class="test-purpose">&#8594; GEX levels (CWall/PWall/Flip), GPD imbalance, regime</div></div>
+    <button class="run-btn" onclick="runOne(1)">RUN</button>
+  </div>
+  <div class="result" id="r1">Not run.</div>
+  <div class="fields" id="f1"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T2</div>
+    <div><div class="test-title">Greek Exposure by Strike</div>
+    <div class="test-url">/uw/api/stock/SPY/greek-exposure/strike</div>
+    <div class="test-purpose">&#8594; Net dealer delta (G1), delta-at-risk (coil)</div></div>
+    <button class="run-btn" onclick="runOne(2)">RUN</button>
+  </div>
+  <div class="result" id="r2">Not run.</div>
+  <div class="fields" id="f2"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T3</div>
+    <div><div class="test-title">Flow Alerts (Sweeps)</div>
+    <div class="test-url">/uw/api/option-trades/flow-alerts?ticker_symbol=SPY&limit=3</div>
+    <div class="test-purpose">&#8594; F1 sweep detection (is_sweep, option_type, timestamp)</div></div>
+    <button class="run-btn" onclick="runOne(3)">RUN</button>
+  </div>
+  <div class="result" id="r3">Not run.</div>
+  <div class="fields" id="f3"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T4</div>
+    <div><div class="test-title">Net Premium Ticks</div>
+    <div class="test-url">/uw/api/stock/SPY/net-prem-ticks</div>
+    <div class="test-purpose">&#8594; Flow pressure (exact field name for net call premium)</div></div>
+    <button class="run-btn" onclick="runOne(4)">RUN</button>
+  </div>
+  <div class="result" id="r4">Not run.</div>
+  <div class="fields" id="f4"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T5</div>
+    <div><div class="test-title">OHLC Bars (1 minute)</div>
+    <div class="test-url">/uw/api/stock/SPY/ohlc/1m</div>
+    <div class="test-purpose">&#8594; SPY bars from UW &#8212; field names (open/high/low/close/volume?)</div></div>
+    <button class="run-btn" onclick="runOne(5)">RUN</button>
+  </div>
+  <div class="result" id="r5">Not run.</div>
+  <div class="fields" id="f5"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T6</div>
+    <div><div class="test-title">Stock State (Current Price)</div>
+    <div class="test-url">/uw/api/stock/SPY/stock-state</div>
+    <div class="test-purpose">&#8594; Live SPY price field name</div></div>
+    <button class="run-btn" onclick="runOne(6)">RUN</button>
+  </div>
+  <div class="result" id="r6">Not run.</div>
+  <div class="fields" id="f6"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T7</div>
+    <div><div class="test-title">Market Tide</div>
+    <div class="test-url">/uw/api/market/market-tide</div>
+    <div class="test-purpose">&#8594; Market-wide net premium sentiment (confirmed valid endpoint)</div></div>
+    <button class="run-btn" onclick="runOne(7)">RUN</button>
+  </div>
+  <div class="result" id="r7">Not run.</div>
+  <div class="fields" id="f7"></div>
+</div>
+
+<script>
+const PATHS=[null,
+  '/uw/api/stock/SPY/spot-exposures/strike',
+  '/uw/api/stock/SPY/greek-exposure/strike',
+  '/uw/api/option-trades/flow-alerts?ticker_symbol=SPY&limit=3',
+  '/uw/api/stock/SPY/net-prem-ticks',
+  '/uw/api/stock/SPY/ohlc/1m',
+  '/uw/api/stock/SPY/stock-state',
+  '/uw/api/market/market-tide',
+];
+const LABELS=['','Spot Exposures','Greek Exposure','Flow Alerts','Net Prem Ticks','OHLC 1m','Stock State','Market Tide'];
+const results={};
+
+function proxy(){return document.getElementById('proxy').value.trim().replace(/\/$/,'');}
+
+function showResult(n,status,statusText,data,isErr){
+  const el=document.getElementById('r'+n);
+  const ok=!isErr&&status>=200&&status<300;
+  let txt='HTTP '+status+' '+statusText+'\n\n';
+  if(data&&typeof data==='object'){
+    const arr=data.data??data;
+    if(Array.isArray(arr)){
+      txt+='Array: '+arr.length+' rows\n';
+      if(arr.length>0) txt+='\nFIRST ROW:\n'+JSON.stringify(arr[0],null,2);
+      else txt+='\n(empty array — market may be closed)';
+    } else {
+      txt+=JSON.stringify(data,null,2).slice(0,1500);
+    }
+  } else {
+    txt+=String(data).slice(0,1000);
+  }
+  el.textContent=txt;
+  el.className='result '+(ok?'ok':'err');
+}
+
+function showFields(n,data){
+  const el=document.getElementById('f'+n);
+  const arr=data?.data??data;
+  if(Array.isArray(arr)&&arr.length){
+    el.textContent='Fields ('+Object.keys(arr[0]).length+'): '+Object.keys(arr[0]).join(' | ');
+  } else if(data&&typeof data==='object'){
+    el.textContent='Keys: '+Object.keys(data).join(' | ');
+  }
+}
+
+function showErr(n,msg){
+  const el=document.getElementById('r'+n);
+  el.className='result err';
+  el.textContent='ERROR: '+msg+'\n\nIf this says "Failed to fetch" the proxy URL may be wrong.\nCheck the URL at the top and try again.';
+  document.getElementById('f'+n).textContent='';
+}
+
+async function runOne(n){
+  const url=proxy()+PATHS[n];
+  document.getElementById('r'+n).textContent='Fetching: '+url+'...';
+  document.getElementById('f'+n).textContent='';
+  try{
+    const r=await fetch(url);
+    let data;
+    try{data=await r.json();}catch(e){data=await r.text();}
+    results[n]={status:r.status,statusText:r.statusText,data,ok:r.ok};
+    showResult(n,r.status,r.statusText,data,!r.ok);
+    if(r.ok) showFields(n,data);
+  }catch(e){
+    results[n]={status:0,err:e.message,ok:false};
+    showErr(n,e.message);
+  }
+}
+
+async function runAll(){
+  for(let i=1;i<=7;i++) await runOne(i);
+  buildSummary();
+}
+
+function buildSummary(){
+  const el=document.getElementById('summary');
+  el.className='show';
+  let h='<strong style="color:#f5a623">SUMMARY</strong><br/><br/>';
+  for(let i=1;i<=7;i++){
+    const r=results[i];
+    if(!r){h+=`<span class="sum-warn">T${i} ${LABELS[i]}: not run</span><br/>`;continue;}
+    const cls=r.ok?'sum-ok':r.status===403||r.status===401?'sum-warn':'sum-err';
+    const icon=r.ok?'OK':r.status===403?'403 tier':r.status===401?'401 auth':r.status===0?'NET ERR':'FAIL '+r.status;
+    h+=`<span class="${cls}">T${i} ${LABELS[i]}: ${icon}</span><br/>`;
+  }
+  el.innerHTML=h;
+}
+
+function copyResults(){
+  let out='UW PROXY PROBE RESULTS\n';
+  out+='Proxy: '+proxy()+'\n';
+  out+=new Date().toISOString()+'\n\n';
+  for(let i=1;i<=7;i++){
+    out+='=== T'+i+' '+LABELS[i]+' ===\n';
+    const r=results[i];
+    if(!r){out+='not run\n\n';continue;}
+    out+='HTTP '+r.status+' '+r.statusText+'\n';
+    const fl=document.getElementById('f'+i).textContent;
+    if(fl) out+=fl+'\n';
+    if(r.data){
+      const arr=r.data?.data??r.data;
+      if(Array.isArray(arr)&&arr.length)
+        out+='FIRST ROW: '+JSON.stringify(arr[0]).slice(0,600)+'\n';
+      else
+        out+=JSON.stringify(r.data).slice(0,400)+'\n';
+    }
+    out+='\n';
+  }
+  navigator.clipboard.writeText(out)
+    .then(()=>{
+      const b=document.querySelector('.btn-copy');
+      b.textContent='Copied!';
+      setTimeout(()=>b.textContent='&#9016; COPY ALL RESULTS',2000);
+    })
+    .catch(()=>alert('Copy failed — select all text manually'));
+}
+</script>
+</body>
+</html>
