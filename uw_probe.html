@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UW API PROBE v2</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:monospace;background:#040507;color:#a8bcc4;padding:16px;font-size:13px}
+h1{color:#f5a623;font-size:15px;margin-bottom:4px}
+.sub{color:#506070;font-size:11px;margin-bottom:16px;line-height:1.6}
+label{display:block;color:#506070;font-size:10px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.1em}
+input{width:100%;max-width:640px;background:#0d1117;border:1px solid #242d36;color:#e0eaee;
+  font-family:monospace;font-size:12px;padding:10px;border-radius:4px;
+  box-sizing:border-box;margin-bottom:12px;-webkit-appearance:none}
+input:focus{outline:none;border-color:#f5a623}
+.btn-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.btn{border:none;padding:11px 20px;font-family:monospace;font-size:11px;font-weight:700;border-radius:4px;cursor:pointer;letter-spacing:.06em}
+.btn-all{background:#f5a623;color:#000}
+.btn-ws{background:#3490ff;color:#fff}
+.btn-copy{background:#242d36;color:#a8bcc4}
+.test{border:1px solid #181e26;border-radius:4px;padding:14px;margin-bottom:12px}
+.test-hdr{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.test-num{background:#242d36;color:#f5a623;font-size:10px;font-weight:700;padding:2px 7px;border-radius:2px;flex-shrink:0;margin-top:1px}
+.test-title{font-size:11px;color:#e0eaee;font-weight:700}
+.test-url{font-size:10px;color:#384550;margin-top:2px;word-break:break-all}
+.test-purpose{font-size:10px;color:#506070;margin-top:2px}
+.run-btn{margin-left:auto;flex-shrink:0;background:#0d1117;border:1px solid #242d36;color:#a8bcc4;
+  font-family:monospace;font-size:10px;padding:5px 12px;border-radius:3px;cursor:pointer;white-space:nowrap}
+.run-btn:hover{border-color:#f5a623;color:#f5a623}
+.result{background:#080b0e;border-radius:3px;padding:10px;font-size:10px;line-height:1.8;
+  white-space:pre-wrap;word-break:break-all;max-height:260px;overflow-y:auto;color:#506070;margin-top:6px}
+.result.ok{color:#a8bcc4}
+.result.err{color:#f02848}
+.fields{font-size:10px;color:#3490ff;margin-top:6px;line-height:1.8}
+#summary{background:#0d1117;border:1px solid #242d36;border-radius:4px;padding:14px;margin-bottom:16px;font-size:11px;line-height:2;display:none}
+#summary.show{display:block}
+.sum-ok{color:#18d46c}.sum-err{color:#f02848}.sum-warn{color:#f5a623}
+</style>
+</head>
+<body>
+<h1>UW API PROBE v2</h1>
+<p class="sub">7 REST tests + WebSocket test. Shows HTTP status, first data row, exact field names.<br/>
+<strong style="color:#f5a623">Run before building anything.</strong></p>
+
+<label>UW API Token</label>
+<input type="password" id="tok" placeholder="Paste UW token here" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+
+<div class="btn-row">
+  <button class="btn btn-all" onclick="runAll()">&#9654; RUN ALL 7 TESTS</button>
+  <button class="btn btn-ws" onclick="testWS()">&#9889; TEST WEBSOCKET</button>
+  <button class="btn btn-copy" onclick="copyResults()">&#9016; COPY ALL RESULTS</button>
+</div>
+
+<div id="summary"></div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T1</div>
+    <div><div class="test-title">Spot Exposures by Strike</div>
+    <div class="test-url">/api/stock/SPY/spot-exposures/strike</div>
+    <div class="test-purpose">&#8594; GEX levels (CWall/PWall/Flip), GPD, regime</div></div>
+    <button class="run-btn" onclick="runOne(1)">RUN</button>
+  </div>
+  <div class="result" id="r1">Not run.</div>
+  <div class="fields" id="f1"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T2</div>
+    <div><div class="test-title">Greek Exposure by Strike</div>
+    <div class="test-url">/api/stock/SPY/greek-exposure/strike</div>
+    <div class="test-purpose">&#8594; Net dealer delta (G1 direction), delta-at-risk (coil)</div></div>
+    <button class="run-btn" onclick="runOne(2)">RUN</button>
+  </div>
+  <div class="result" id="r2">Not run.</div>
+  <div class="fields" id="f2"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T3</div>
+    <div><div class="test-title">Flow Alerts (Sweeps)</div>
+    <div class="test-url">/api/option-trades/flow-alerts?ticker_symbol=SPY&limit=3</div>
+    <div class="test-purpose">&#8594; F1 sweep detection (is_sweep, option_type, created_at)</div></div>
+    <button class="run-btn" onclick="runOne(3)">RUN</button>
+  </div>
+  <div class="result" id="r3">Not run.</div>
+  <div class="fields" id="f3"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T4</div>
+    <div><div class="test-title">Net Premium Ticks</div>
+    <div class="test-url">/api/stock/SPY/net-prem-ticks</div>
+    <div class="test-purpose">&#8594; Flow pressure (need exact field name for net call premium)</div></div>
+    <button class="run-btn" onclick="runOne(4)">RUN</button>
+  </div>
+  <div class="result" id="r4">Not run.</div>
+  <div class="fields" id="f4"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T5</div>
+    <div><div class="test-title">OHLC Bars (1 minute)</div>
+    <div class="test-url">/api/stock/SPY/ohlc/1m</div>
+    <div class="test-purpose">&#8594; SPY bars from UW &#8212; may replace Tradier timesales entirely</div></div>
+    <button class="run-btn" onclick="runOne(5)">RUN</button>
+  </div>
+  <div class="result" id="r5">Not run.</div>
+  <div class="fields" id="f5"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T6</div>
+    <div><div class="test-title">Stock State (Current Price)</div>
+    <div class="test-url">/api/stock/SPY/stock-state</div>
+    <div class="test-purpose">&#8594; Live SPY price from UW &#8212; may replace Tradier quote</div></div>
+    <button class="run-btn" onclick="runOne(6)">RUN</button>
+  </div>
+  <div class="result" id="r6">Not run.</div>
+  <div class="fields" id="f6"></div>
+</div>
+
+<div class="test">
+  <div class="test-hdr">
+    <div class="test-num">T7</div>
+    <div><div class="test-title">WebSocket Channel List</div>
+    <div class="test-url">/api/socket</div>
+    <div class="test-purpose">&#8594; Lists available real-time channels (price, gex, flow_alerts)</div></div>
+    <button class="run-btn" onclick="runOne(7)">RUN</button>
+  </div>
+  <div class="result" id="r7">Not run.</div>
+  <div class="fields" id="f7"></div>
+</div>
+
+<div class="test" style="border-color:#0d1e3a">
+  <div class="test-hdr">
+    <div class="test-num" style="background:#0d1e3a;color:#3490ff">WS</div>
+    <div><div class="test-title">WebSocket Live Connection</div>
+    <div class="test-url">wss://api.unusualwhales.com &#8212; tries multiple URL patterns</div>
+    <div class="test-purpose">&#8594; Can we receive real-time pushes? Shows first message + field names</div></div>
+    <button class="run-btn" onclick="testWS()">RUN</button>
+  </div>
+  <div class="result" id="rws">Not run.</div>
+  <div class="fields" id="fws"></div>
+</div>
+
+<script>
+const BASE='https://api.unusualwhales.com';
+const URLS=[null,
+  BASE+'/api/stock/SPY/spot-exposures/strike',
+  BASE+'/api/stock/SPY/greek-exposure/strike',
+  BASE+'/api/option-trades/flow-alerts?ticker_symbol=SPY&limit=3',
+  BASE+'/api/stock/SPY/net-prem-ticks',
+  BASE+'/api/stock/SPY/ohlc/1m',
+  BASE+'/api/stock/SPY/stock-state',
+  BASE+'/api/socket',
+];
+const LABELS=['','Spot Exposures','Greek Exposure','Flow Alerts','Net Prem Ticks','OHLC 1m','Stock State','Socket List'];
+const results={};
+
+function tok(){return document.getElementById('tok').value.trim();}
+function hdrs(){return{'Authorization':'Bearer '+tok(),'UW-CLIENT-API-ID':'100001','Accept':'application/json'};}
+
+function showResult(n,status,statusText,data,isErr){
+  const el=document.getElementById('r'+n);
+  const ok=!isErr&&status>=200&&status<300;
+  let txt='HTTP '+status+' '+statusText+'\n\n';
+  if(data&&typeof data==='object'){
+    const arr=data.data??data;
+    if(Array.isArray(arr)){
+      txt+='Array: '+arr.length+' rows\n';
+      if(arr.length>0)txt+='\nFIRST ROW:\n'+JSON.stringify(arr[0],null,2);
+      else txt+='\n(empty array)';
+    } else {
+      txt+=JSON.stringify(data,null,2).slice(0,1500);
+    }
+  } else {
+    txt+=String(data).slice(0,1000);
+  }
+  el.textContent=txt;
+  el.className='result '+(ok?'ok':'err');
+}
+
+function showFields(n,data){
+  const el=document.getElementById('f'+n);
+  const arr=data?.data??data;
+  if(Array.isArray(arr)&&arr.length){
+    el.textContent='Fields ('+Object.keys(arr[0]).length+'): '+Object.keys(arr[0]).join(' | ');
+  } else if(data&&typeof data==='object'){
+    el.textContent='Keys: '+Object.keys(data).join(' | ');
+  }
+}
+
+function showErr(n,msg){
+  const el=document.getElementById('r'+n);
+  el.className='result err';
+  el.textContent='NETWORK/CORS ERROR:\n'+msg+'\n\nLikely causes:\n1. Token missing or wrong\n2. UW blocking browser (CORS policy on github.io)\n3. Endpoint not in your API tier';
+  document.getElementById('f'+n).textContent='';
+}
+
+async function runOne(n){
+  if(!tok()){document.getElementById('r'+n).textContent='Enter token first.';return;}
+  document.getElementById('r'+n).textContent='Fetching...';
+  document.getElementById('f'+n).textContent='';
+  try{
+    const r=await fetch(URLS[n],{headers:hdrs()});
+    let data;
+    try{data=await r.json();}catch(e){data=await r.text();}
+    results[n]={status:r.status,statusText:r.statusText,data,ok:r.ok};
+    showResult(n,r.status,r.statusText,data,!r.ok);
+    if(r.ok)showFields(n,data);
+  }catch(e){
+    results[n]={status:0,err:e.message,ok:false};
+    showErr(n,e.message);
+  }
+}
+
+async function runAll(){
+  for(let i=1;i<=7;i++) await runOne(i);
+  buildSummary();
+}
+
+function buildSummary(){
+  const el=document.getElementById('summary');
+  el.className='show';
+  let h='<strong style="color:#f5a623">SUMMARY</strong><br/><br/>';
+  for(let i=1;i<=7;i++){
+    const r=results[i];
+    if(!r){h+=`<span class="sum-warn">T${i} ${LABELS[i]}: not run</span><br/>`;continue;}
+    const cls=r.ok?'sum-ok':r.status===0||r.status===401||r.status===403?'sum-warn':'sum-err';
+    const icon=r.ok?'OK':r.status===403?'403 tier?':r.status===401?'401 auth?':r.status===0?'CORS/NET':'FAIL';
+    h+=`<span class="${cls}">T${i} ${LABELS[i]}: ${icon} (HTTP ${r.status||'N/A'})</span><br/>`;
+  }
+  el.innerHTML=h;
+}
+
+function testWS(){
+  if(!tok()){document.getElementById('rws').textContent='Enter token first.';return;}
+  const el=document.getElementById('rws');
+  el.className='result ok';
+  const candidates=[
+    'wss://api.unusualwhales.com/socket/websocket?token='+tok()+'&vsn=2.0.0',
+    'wss://api.unusualwhales.com/api/socket/price?token='+tok(),
+    'wss://api.unusualwhales.com/api/socket?token='+tok(),
+    'wss://api.unusualwhales.com/ws?token='+tok(),
+  ];
+  let idx=0;
+  function tryNext(){
+    if(idx>=candidates.length){
+      el.className='result err';
+      el.textContent='All WebSocket patterns failed.\nCheck T7 result for correct channel URL format.\nMay need API plan upgrade for WebSocket access.';
+      return;
+    }
+    const url=candidates[idx];
+    const display=url.replace(tok(),'[TOKEN]');
+    el.textContent='Trying '+display+'...';
+    idx++;
+    let ws;
+    try{ws=new WebSocket(url);}
+    catch(e){el.textContent+=' Failed: '+e.message+'\n';tryNext();return;}
+    const t=setTimeout(()=>{ws.close();el.textContent+=' Timeout.\n';tryNext();},5000);
+    ws.onopen=()=>{
+      clearTimeout(t);
+      el.textContent='CONNECTED: '+display+'\nWaiting for message (10s)...\n';
+      try{ws.send(JSON.stringify({topic:'price:SPY',event:'phx_join',payload:{},ref:'1'}));}catch(e){}
+      try{ws.send(JSON.stringify({topic:'gex:SPY',event:'phx_join',payload:{},ref:'2'}));}catch(e){}
+    };
+    ws.onmessage=(e)=>{
+      clearTimeout(t);
+      el.textContent+='MESSAGE: '+e.data.slice(0,600);
+      try{
+        const d=JSON.parse(e.data);
+        document.getElementById('fws').textContent='Fields: '+Object.keys(d).join(' | ')+(d.payload?'\nPayload fields: '+Object.keys(d.payload).join(' | '):'');
+      }catch(x){}
+      el.textContent+='\n\nWebSocket works!';
+      ws.close();
+    };
+    ws.onerror=()=>{clearTimeout(t);el.textContent+=' Error.\n';};
+    ws.onclose=(e)=>{if(idx<=candidates.length&&!el.textContent.includes('works'))tryNext();};
+  }
+  tryNext();
+}
+
+function copyResults(){
+  let out='UW API PROBE v2 RESULTS\n';
+  out+='Token length: '+tok().length+' chars\n';
+  out+=new Date().toISOString()+'\n\n';
+  for(let i=1;i<=7;i++){
+    out+='=== T'+i+' '+LABELS[i]+' ===\n';
+    const r=results[i];
+    if(!r){out+='not run\n\n';continue;}
+    out+='HTTP '+r.status+' '+r.statusText+'\n';
+    const fl=document.getElementById('f'+i).textContent;
+    if(fl)out+=fl+'\n';
+    if(r.data){
+      const arr=r.data?.data??r.data;
+      if(Array.isArray(arr)&&arr.length)
+        out+='FIRST ROW: '+JSON.stringify(arr[0]).slice(0,500)+'\n';
+      else out+=JSON.stringify(r.data).slice(0,300)+'\n';
+    }
+    out+='\n';
+  }
+  out+='=== WS ===\n'+(document.getElementById('rws').textContent||'not run')+'\n';
+  navigator.clipboard.writeText(out)
+    .then(()=>{
+      const b=document.querySelector('.btn-copy');
+      b.textContent='Copied!';
+      setTimeout(()=>b.textContent='&#9016; COPY ALL RESULTS',2000);
+    })
+    .catch(()=>alert('Clipboard blocked. Select all text on the page manually (Cmd+A, Cmd+C).'));
+}
+</script>
+</body>
+</html>
