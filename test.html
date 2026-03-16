@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SPX SNIPER TEST</title>
+<style>
+body{font-family:monospace;background:#040507;color:#a8bcc4;padding:20px;font-size:14px}
+h2{color:#f5a623;margin-bottom:16px}
+.btn{background:#f5a623;color:#000;border:none;padding:14px 24px;font-size:14px;
+  font-family:monospace;border-radius:4px;cursor:pointer;margin:8px 4px;display:inline-block}
+.btn2{background:transparent;color:#a8bcc4;border:1px solid #384550;padding:14px 24px;
+  font-size:14px;font-family:monospace;border-radius:4px;cursor:pointer;margin:8px 4px}
+input{width:100%;background:#0d1117;border:1px solid #242d36;color:#e0eaee;
+  font-family:monospace;font-size:14px;padding:12px;border-radius:4px;
+  box-sizing:border-box;margin-bottom:12px;-webkit-appearance:none}
+label{display:block;color:#506070;font-size:11px;margin-bottom:4px;text-transform:uppercase}
+#cfg{display:none;background:#040507;position:absolute;top:0;left:0;right:0;bottom:0;padding:20px;overflow-y:auto}
+#main{padding:20px}
+#log{background:#0d1117;padding:12px;margin-top:16px;border-radius:4px;
+  font-size:12px;line-height:1.8;min-height:100px;white-space:pre-wrap}
+.ok{color:#18d46c}.err{color:#f02848}.warn{color:#f5a623}
+</style>
+</head>
+<body>
+<div id="main">
+  <h2>SPX SNIPER — DIAGNOSTIC</h2>
+  <p style="margin-bottom:16px;color:#506070">This page tests CONFIG and API connectivity.</p>
+  <button class="btn" id="open-cfg">OPEN CONFIG</button>
+  <button class="btn2" id="test-apis">TEST APIS</button>
+  <div id="log">Tap OPEN CONFIG to enter keys, then TEST APIS to verify connectivity.</div>
+</div>
+
+<div id="cfg">
+  <h2>CONFIGURATION</h2>
+  <label>Tradier Token (required)</label>
+  <input type="text" id="c-tradier" placeholder="Tradier production token" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+  <label>Polygon Key (optional)</label>
+  <input type="text" id="c-poly" placeholder="Optional" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+  <label>Unusual Whales Token</label>
+  <input type="text" id="c-uw" placeholder="UW API token" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+  <label>Pushover App Token</label>
+  <input type="text" id="c-pt" placeholder="Pushover app token" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+  <label>Pushover User Key</label>
+  <input type="text" id="c-pu" placeholder="Pushover user key" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+  <button class="btn" id="save-btn">SAVE & CLOSE</button>
+  <button class="btn2" id="cancel-btn">CANCEL</button>
+</div>
+
+<script>
+const KEY = 'spy_sniper_v3';
+let cfg = {};
+try { cfg = JSON.parse(localStorage.getItem(KEY)||'{}'); } catch(e){}
+
+function log(msg, cls) {
+  const d = document.getElementById('log');
+  const line = document.createElement('div');
+  line.className = cls||'';
+  line.textContent = new Date().toLocaleTimeString() + ' — ' + msg;
+  d.appendChild(line);
+  d.scrollTop = d.scrollHeight;
+}
+
+function openCfg() {
+  document.getElementById('c-tradier').value = cfg.tradierToken||'';
+  document.getElementById('c-poly').value    = cfg.polygonKey||'';
+  document.getElementById('c-uw').value      = cfg.uwToken||'';
+  document.getElementById('c-pt').value      = cfg.pushoverToken||'';
+  document.getElementById('c-pu').value      = cfg.pushoverUser||'';
+  document.getElementById('cfg').style.display='block';
+  document.getElementById('main').style.display='none';
+}
+
+function closeCfg() {
+  document.getElementById('cfg').style.display='none';
+  document.getElementById('main').style.display='block';
+}
+
+function saveCfg() {
+  cfg.tradierToken  = document.getElementById('c-tradier').value.trim();
+  cfg.polygonKey    = document.getElementById('c-poly').value.trim();
+  cfg.uwToken       = document.getElementById('c-uw').value.trim();
+  cfg.pushoverToken = document.getElementById('c-pt').value.trim();
+  cfg.pushoverUser  = document.getElementById('c-pu').value.trim();
+  localStorage.setItem(KEY, JSON.stringify(cfg));
+  log('Keys saved to localStorage.', 'ok');
+  closeCfg();
+}
+
+async function testAPIs() {
+  document.getElementById('log').innerHTML = '';
+  log('Starting API tests...');
+
+  if(!cfg.tradierToken) { log('No Tradier token — open CONFIG first.', 'err'); return; }
+
+  // Test 1: Tradier quote
+  log('Testing Tradier quote (SPX + VIX)...');
+  try {
+    const r = await fetch(
+      'https://api.tradier.com/v1/markets/quotes?symbols=%24SPX.X,%24VIX.X&greeks=false',
+      {headers:{Authorization:'Bearer '+cfg.tradierToken, Accept:'application/json'}}
+    );
+    const d = await r.json();
+    const quotes = d?.quotes?.quote;
+    const arr = Array.isArray(quotes)?quotes:[quotes];
+    arr.forEach(q=>{
+      if(q) log(q.symbol + ' = ' + (q.last||q.bid||'no price'), 'ok');
+    });
+  } catch(e) { log('Tradier quote ERROR: '+e.message, 'err'); }
+
+  // Test 2: Tradier timesales SPX
+  log('Testing Tradier timesales (SPX bars)...');
+  try {
+    const now = new Date();
+    const et = new Date(now.getTime() + (-4)*3600000 + now.getTimezoneOffset()*60000);
+    const pad = n=>String(n).padStart(2,'0');
+    const ds = `${et.getFullYear()}-${pad(et.getMonth()+1)}-${pad(et.getDate())}`;
+    const start = encodeURIComponent(`${ds} 09:30`);
+    const end   = encodeURIComponent(`${ds} ${pad(et.getHours())}:${pad(et.getMinutes())}`);
+    const r = await fetch(
+      `https://api.tradier.com/v1/markets/timesales?symbol=SPX&interval=1min&start=${start}&end=${end}&session_filter=all`,
+      {headers:{Authorization:'Bearer '+cfg.tradierToken, Accept:'application/json'}}
+    );
+    const d = await r.json();
+    const s = d?.series?.data;
+    const arr = s ? (Array.isArray(s)?s:[s]) : [];
+    log('Tradier SPX bars: ' + arr.length + ' candles', arr.length>0?'ok':'warn');
+  } catch(e) { log('Tradier timesales ERROR: '+e.message, 'err'); }
+
+  // Test 3: Tradier options chain SPX
+  log('Testing Tradier SPX options chain...');
+  try {
+    const today = new Date();
+    const et = new Date(today.getTime() + (-4)*3600000 + today.getTimezoneOffset()*60000);
+    const pad = n=>String(n).padStart(2,'0');
+    const ds = `${et.getFullYear()}-${pad(et.getMonth()+1)}-${pad(et.getDate())}`;
+    const r = await fetch(
+      'https://api.tradier.com/v1/markets/options/expirations?symbol=SPX&includeAllRoots=false',
+      {headers:{Authorization:'Bearer '+cfg.tradierToken, Accept:'application/json'}}
+    );
+    const d = await r.json();
+    const dates = d?.expirations?.date;
+    const arr = dates?(Array.isArray(dates)?dates:[dates]):[];
+    const exp = arr.find(x=>x>=ds)||arr[0];
+    log('SPX nearest expiry: ' + (exp||'none found'), exp?'ok':'err');
+  } catch(e) { log('Tradier chain ERROR: '+e.message, 'err'); }
+
+  // Test 4: UW if token present
+  if(cfg.uwToken) {
+    log('Testing UW spot-exposures (SPX)...');
+    try {
+      const r = await fetch(
+        'https://api.unusualwhales.com/api/stock/SPX/spot-exposures/strike',
+        {headers:{Authorization:'Bearer '+cfg.uwToken,'UW-CLIENT-API-ID':'100001',Accept:'application/json'}}
+      );
+      const d = await r.json();
+      const rows = d?.data??d;
+      log('UW spot-exposures: HTTP '+r.status+', '+(Array.isArray(rows)?rows.length+' rows':'non-array'), r.ok?'ok':'err');
+    } catch(e) { log('UW ERROR: '+e.message, 'err'); }
+  } else {
+    log('No UW token — skipping UW test.', 'warn');
+  }
+
+  log('Done. Share these results to diagnose issues.');
+}
+
+// Wire buttons
+document.getElementById('open-cfg').addEventListener('click', openCfg);
+document.getElementById('open-cfg').addEventListener('touchend', function(e){e.preventDefault();openCfg();});
+document.getElementById('save-btn').addEventListener('click', saveCfg);
+document.getElementById('save-btn').addEventListener('touchend', function(e){e.preventDefault();saveCfg();});
+document.getElementById('cancel-btn').addEventListener('click', closeCfg);
+document.getElementById('cancel-btn').addEventListener('touchend', function(e){e.preventDefault();closeCfg();});
+document.getElementById('test-apis').addEventListener('click', testAPIs);
+document.getElementById('test-apis').addEventListener('touchend', function(e){e.preventDefault();testAPIs();});
+
+// Show existing keys status
+if(cfg.tradierToken) log('Tradier token found in storage ('+cfg.tradierToken.substring(0,6)+'...).', 'ok');
+else log('No Tradier token in storage. Open CONFIG to add.', 'warn');
+if(cfg.uwToken) log('UW token found in storage.', 'ok');
+if(cfg.polygonKey) log('Polygon key found in storage.', 'ok');
+</script>
+</body>
+</html>
