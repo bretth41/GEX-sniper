@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SPY SNIPER · LOG</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#040507;--surface:#080b0e;--surface2:#0d1117;
+  --border:#181e26;--border2:#242d36;
+  --text:#a8bcc4;--dim:#384550;--dim2:#506070;
+  --amber:#f5a623;--green:#18d46c;--red:#f02848;--blue:#3490ff;--white:#e0eaee;
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:11px;padding:16px}
+
+/* ── HEADER ── */
+.page-hdr{display:flex;align-items:baseline;gap:16px;margin-bottom:20px;
+  border-bottom:1px solid var(--border);padding-bottom:12px}
+.logo{font-family:'Syncopate',sans-serif;font-size:12px;font-weight:700;color:var(--amber)}
+.page-date{font-size:10px;color:var(--dim2)}
+.refresh-info{font-size:9px;color:var(--dim);margin-left:auto}
+.btn-clear{background:none;border:1px solid var(--border2);color:var(--dim2);
+  font-family:'JetBrains Mono',monospace;font-size:9px;padding:4px 10px;
+  border-radius:2px;cursor:pointer;margin-left:8px}
+.btn-clear:hover{border-color:var(--red);color:var(--red)}
+.btn-copy{background:none;border:1px solid var(--border2);color:var(--dim2);
+  font-family:'JetBrains Mono',monospace;font-size:9px;padding:4px 10px;
+  border-radius:2px;cursor:pointer;margin-left:8px}
+.btn-copy:hover{border-color:var(--amber);color:var(--amber)}
+
+/* ── SUMMARY ── */
+.summary{display:flex;gap:24px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--border);border-radius:4px;
+  padding:14px 18px;margin-bottom:20px}
+.sum-block{flex-shrink:0}
+.sum-lbl{font-size:7px;color:var(--dim);text-transform:uppercase;
+  letter-spacing:.12em;margin-bottom:5px}
+.sum-val{font-size:22px;font-weight:700;letter-spacing:-.02em;color:var(--white)}
+.sum-sub{font-size:9px;color:var(--dim2);margin-top:2px}
+.sum-divider{width:1px;background:var(--border2);margin:0 4px;align-self:stretch}
+.pct-good{color:var(--green)}.pct-mid{color:var(--amber)}.pct-bad{color:var(--red)}
+
+/* ── TABLE ── */
+.section-lbl{font-size:8px;color:var(--dim);text-transform:uppercase;
+  letter-spacing:.12em;margin-bottom:8px}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:10px;min-width:780px}
+th{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;
+  font-weight:400;padding:4px 10px 6px;border-bottom:1px solid var(--border);
+  text-align:right;white-space:nowrap}
+th:first-child,th:nth-child(2),th:nth-child(3){text-align:left}
+td{padding:6px 10px;border-bottom:1px solid var(--border);
+  text-align:right;white-space:nowrap;color:var(--dim2)}
+td:first-child,td:nth-child(2){text-align:left}
+td:nth-child(3){text-align:left}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface)}
+
+/* signal type badge */
+.sig-call{color:var(--green);font-weight:700}
+.sig-put {color:var(--red);font-weight:700}
+
+/* score coloring */
+.sc-pos{color:var(--green)}.sc-neg{color:var(--red)}.sc-neu{color:var(--dim2)}
+
+/* follow-through cells */
+.ft-win{color:var(--green);font-weight:600}
+.ft-loss{color:var(--red);font-weight:600}
+.ft-even{color:var(--dim2)}
+.ft-null{color:var(--dim)}
+
+/* no data */
+.empty{text-align:center;padding:40px;color:var(--dim);font-size:12px}
+
+/* tab bar */
+.tabs{display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--border)}
+.tab{padding:6px 16px;font-family:'JetBrains Mono',monospace;font-size:9px;
+  color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:-1px}
+.tab.on{color:var(--amber);border-bottom-color:var(--amber)}
+</style>
+</head>
+<body>
+
+<div class="page-hdr">
+  <div class="logo">SPY SNIPER · SIGNAL LOG</div>
+  <div class="page-date" id="pg-date"></div>
+  <div class="refresh-info">Auto-refreshes every 10s</div>
+  <button class="btn-copy" id="btn-copy" onclick="copyLog()">COPY LOG</button>
+  <button class="btn-clear" onclick="clearLog()">CLEAR LOG</button>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary" id="summary"></div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab on" onclick="showTab('today')">TODAY</div>
+  <div class="tab" onclick="showTab('all')">ALL SESSIONS</div>
+</div>
+
+<div class="section-lbl" id="tbl-lbl">TODAY'S SIGNALS</div>
+<div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>TIME</th>
+        <th>TYPE</th>
+        <th>PRICE</th>
+        <th>G1</th>
+        <th>F1</th>
+        <th>D1</th>
+        <th>SC</th>
+        <th>COMP</th>
+        <th>+1m</th>
+        <th>+2m</th>
+        <th>+5m</th>
+        <th>+10m</th>
+        <th>+15m</th>
+        <th>+30m</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-body"></tbody>
+  </table>
+</div>
+<div id="empty-msg" class="empty" style="display:none">No signals logged yet today.</div>
+
+<script>
+const LOG_KEY = 'spy_sniper_log';
+let currentTab = 'today';
+
+function etDateStr() {
+  const n=new Date(), jan=new Date(n.getFullYear(),0,1).getTimezoneOffset(),
+        jul=new Date(n.getFullYear(),6,1).getTimezoneOffset(),
+        off=Math.min(jan,jul)!==jan?-4:-5;
+  const e=new Date(n.getTime()+off*3600000+n.getTimezoneOffset()*60000);
+  const p=x=>String(x).padStart(2,'0');
+  return `${e.getFullYear()}-${p(e.getMonth()+1)}-${p(e.getDate())}`;
+}
+
+function getLog() {
+  try { return JSON.parse(localStorage.getItem(LOG_KEY)||'[]'); }
+  catch(e) { return []; }
+}
+
+function scoreClass(v) {
+  if(v===null||v===undefined) return 'sc-neu';
+  return v>0.2?'sc-pos':v<-0.2?'sc-neg':'sc-neu';
+}
+
+function ftClass(entry, min) {
+  const p = entry.ft[String(min)];
+  if(p===null||p===undefined) return 'ft-null';
+  const dir = entry.type==='STRONG_CALL'?1:-1;
+  const move = (p - entry.price) * dir;
+  return move>0.05?'ft-win':move<-0.05?'ft-loss':'ft-even';
+}
+
+function ftText(entry, min) {
+  const p = entry.ft[String(min)];
+  if(p===null||p===undefined) return '—';
+  const move = p - entry.price;
+  return (move>=0?'+':'')+move.toFixed(2);
+}
+
+function pctClass(pct) {
+  return pct>=70?'pct-good':pct>=50?'pct-mid':'pct-bad';
+}
+
+function buildSummary(entries) {
+  const calls = entries.filter(e=>e.type==='STRONG_CALL');
+  const puts  = entries.filter(e=>e.type==='STRONG_PUT');
+
+  function stats(arr, min) {
+    const settled = arr.filter(e=>e.ft[String(min)]!==null);
+    const wins = settled.filter(e=>{
+      const dir=e.type==='STRONG_CALL'?1:-1;
+      return (e.ft[String(min)]-e.price)*dir > 0.05;
+    });
+    return {settled:settled.length,wins:wins.length,
+      pct:settled.length?Math.round(wins.length/settled.length*100):null};
+  }
+
+  function avgMove(arr, min) {
+    const settled = arr.filter(e=>e.ft[String(min)]!==null);
+    if(!settled.length) return null;
+    const dir = arr[0]&&arr[0].type==='STRONG_CALL'?1:-1;
+    const avg = settled.reduce((s,e)=>(s+(e.ft[String(min)]-e.price)*dir),0)/settled.length;
+    return avg.toFixed(2);
+  }
+
+  const s5  = stats(entries,5);
+  const s15 = stats(entries,15);
+
+  let html = `
+    <div class="sum-block">
+      <div class="sum-lbl">STRONG CALLS</div>
+      <div class="sum-val sig-call">${calls.length}</div>
+    </div>
+    <div class="sum-divider"></div>
+    <div class="sum-block">
+      <div class="sum-lbl">STRONG PUTS</div>
+      <div class="sum-val sig-put">${puts.length}</div>
+    </div>
+    <div class="sum-divider"></div>
+    <div class="sum-block">
+      <div class="sum-lbl">TOTAL SIGNALS</div>
+      <div class="sum-val" style="color:var(--white)">${entries.length}</div>
+    </div>
+    <div class="sum-divider"></div>
+    <div class="sum-block">
+      <div class="sum-lbl">PROFITABLE @ 5m</div>
+      <div class="sum-val ${s5.pct!==null?pctClass(s5.pct):'sc-neu'}">
+        ${s5.pct!==null?s5.pct+'%':'—'}
+      </div>
+      <div class="sum-sub">${s5.wins}/${s5.settled} settled</div>
+    </div>
+    <div class="sum-divider"></div>
+    <div class="sum-block">
+      <div class="sum-lbl">PROFITABLE @ 15m</div>
+      <div class="sum-val ${s15.pct!==null?pctClass(s15.pct):'sc-neu'}">
+        ${s15.pct!==null?s15.pct+'%':'—'}
+      </div>
+      <div class="sum-sub">${s15.wins}/${s15.settled} settled</div>
+    </div>`;
+
+  // Per-direction stats if we have enough
+  if(calls.length>0 && puts.length>0) {
+    const cs5=stats(calls,5), ps5=stats(puts,5);
+    html += `
+    <div class="sum-divider"></div>
+    <div class="sum-block">
+      <div class="sum-lbl">CALLS @ 5m</div>
+      <div class="sum-val ${cs5.pct!==null?pctClass(cs5.pct):'sc-neu'} sig-call">
+        ${cs5.pct!==null?cs5.pct+'%':'—'}
+      </div>
+    </div>
+    <div class="sum-block">
+      <div class="sum-lbl">PUTS @ 5m</div>
+      <div class="sum-val ${ps5.pct!==null?pctClass(ps5.pct):'sc-neu'} sig-put">
+        ${ps5.pct!==null?ps5.pct+'%':'—'}
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('summary').innerHTML = html;
+}
+
+function buildTable(entries) {
+  const tbody = document.getElementById('tbl-body');
+  const empty = document.getElementById('empty-msg');
+  if(!entries.length) {
+    tbody.innerHTML=''; empty.style.display='block'; return;
+  }
+  empty.style.display='none';
+  const mins = [1,2,5,10,15,30];
+  tbody.innerHTML = entries.map(e=>{
+    const isCall = e.type==='STRONG_CALL';
+    const typeHtml = `<span class="${isCall?'sig-call':'sig-put'}">${isCall?'STR CALL':'STR PUT'}</span>`;
+    const scores = ['g1','f1','d1','sc','comp'].map(k=>{
+      const v=e[k]; const sc=scoreClass(v);
+      return `<td class="${sc}">${v>=0?'+':''}${v}</td>`;
+    }).join('');
+    const ftCells = mins.map(m=>{
+      return `<td class="${ftClass(e,m)}">${ftText(e,m)}</td>`;
+    }).join('');
+    return `<tr>
+      <td>${e.time}</td>
+      <td>${typeHtml}</td>
+      <td>${e.price?e.price.toFixed(2):'—'}</td>
+      ${scores}
+      ${ftCells}
+    </tr>`;
+  }).join('');
+}
+
+function showTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('on', (i===0&&tab==='today')||(i===1&&tab==='all'));
+  });
+  render();
+}
+
+function render() {
+  const today = etDateStr();
+  document.getElementById('pg-date').textContent = today;
+  const log = getLog();
+  const entries = currentTab==='today'
+    ? log.filter(e=>e.date===today)
+    : log;
+  document.getElementById('tbl-lbl').textContent =
+    currentTab==='today'?`TODAY'S SIGNALS (${today})`:`ALL SESSIONS (${log.length} total, last ${LOG_MAX})`;
+  buildSummary(entries);
+  buildTable(entries);
+}
+
+const LOG_MAX = 200;
+
+function clearLog() {
+  if(!confirm('Clear the entire signal log? This cannot be undone.')) return;
+  localStorage.removeItem(LOG_KEY);
+  render();
+}
+
+// Initial render + auto-refresh every 10s
+render();
+setInterval(render, 10000);
+
+function copyLog() {
+  const today = etDateStr();
+  const log = getLog();
+  const entries = currentTab==='today' ? log.filter(e=>e.date===today) : log;
+  if(!entries.length){ alert('No signals to copy.'); return; }
+
+  const mins = [1,2,5,10,15,30];
+  const header = ['TIME','TYPE','PRICE','G1','F1','D1','SC','COMP','+1m','+2m','+5m','+10m','+15m','+30m'].join('	');
+
+  const rows = entries.map(e=>{
+    const dir = e.type==='STRONG_CALL'?1:-1;
+    const ftCells = mins.map(m=>{
+      const p=e.ft[String(m)];
+      if(p===null||p===undefined) return '—';
+      const move=p-e.price;
+      return (move>=0?'+':'')+move.toFixed(2);
+    });
+    return [
+      e.time,
+      e.type.replace('STRONG_','STR '),
+      e.price?e.price.toFixed(2):'—',
+      (e.g1>=0?'+':'')+e.g1,
+      (e.f1>=0?'+':'')+e.f1,
+      (e.d1>=0?'+':'')+e.d1,
+      (e.sc>=0?'+':'')+e.sc,
+      (e.comp>=0?'+':'')+e.comp,
+      ...ftCells
+    ].join('	');
+  });
+
+  // Summary
+  const s5all  = entries.filter(e=>e.ft['5']!==null);
+  const s15all = entries.filter(e=>e.ft['15']!==null);
+  const w5  = s5all.filter(e=>(e.ft['5']-e.price)*(e.type==='STRONG_CALL'?1:-1)>0.05).length;
+  const w15 = s15all.filter(e=>(e.ft['15']-e.price)*(e.type==='STRONG_CALL'?1:-1)>0.05).length;
+
+  const summary = [
+    `SPY SNIPER SIGNAL LOG — ${currentTab==='today'?today:'ALL SESSIONS'}`,
+    `Signals: ${entries.length}  |  Calls: ${entries.filter(e=>e.type==='STRONG_CALL').length}  |  Puts: ${entries.filter(e=>e.type==='STRONG_PUT').length}`,
+    s5all.length  ? `Profitable @5m:  ${w5}/${s5all.length} (${Math.round(w5/s5all.length*100)}%)` : 'Profitable @5m:  pending',
+    s15all.length ? `Profitable @15m: ${w15}/${s15all.length} (${Math.round(w15/s15all.length*100)}%)` : 'Profitable @15m: pending',
+    '',
+    header,
+    ...rows
+  ].join('
+');
+
+  navigator.clipboard.writeText(summary).then(()=>{
+    const btn=document.getElementById('btn-copy');
+    btn.textContent='COPIED!'; btn.style.color='var(--green)';
+    setTimeout(()=>{ btn.textContent='COPY LOG'; btn.style.color=''; }, 2000);
+  }).catch(()=>{
+    // Fallback: show in textarea if clipboard blocked
+    const ta=document.createElement('textarea');
+    ta.value=summary; ta.style.cssText='position:fixed;top:0;left:0;width:100%;height:200px;z-index:9999;font-size:10px;background:#0d1117;color:#a8bcc4;border:1px solid #f5a623;padding:8px;';
+    document.body.appendChild(ta); ta.select();
+    alert('Clipboard blocked. Text selected above — copy manually (Cmd+C).');
+    setTimeout(()=>ta.remove(), 10000);
+  });
+}
+</script>
+</body>
+</html>
