@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SPY SNIPER · LOG</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#040507;--surface:#080b0e;--surface2:#0d1117;
+  --border:#181e26;--border2:#242d36;
+  --text:#a8bcc4;--dim:#384550;--dim2:#506070;
+  --amber:#f5a623;--green:#18d46c;--red:#f02848;--white:#e0eaee;
+}
+html,body{min-height:100%;background:var(--bg);color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:11px;padding:16px}
+.page-hdr{display:flex;align-items:baseline;gap:16px;margin-bottom:12px;
+  border-bottom:1px solid var(--border);padding-bottom:12px;flex-wrap:wrap}
+.logo{font-family:'Syncopate',sans-serif;font-size:12px;font-weight:700;color:var(--amber)}
+.page-date{font-size:10px;color:var(--dim2)}
+.refresh-info{font-size:9px;color:var(--dim);margin-left:auto}
+.btn{background:none;border:1px solid var(--border2);color:var(--dim2);
+  font-family:'JetBrains Mono',monospace;font-size:9px;padding:4px 10px;
+  border-radius:2px;cursor:pointer;margin-left:8px}
+.btn:hover{border-color:var(--amber);color:var(--amber)}
+.btn-danger:hover{border-color:var(--red);color:var(--red)}
+.debug-bar{background:var(--surface);border:1px solid var(--border2);font-size:9px;
+  color:var(--amber);padding:5px 10px;margin-bottom:8px;border-radius:2px;font-family:monospace}
+.err-bar{background:var(--red);color:#fff;font-size:9px;padding:5px 10px;
+  margin-bottom:8px;border-radius:2px;display:none}
+.summary{display:flex;gap:16px;flex-wrap:wrap;background:var(--surface);
+  border:1px solid var(--border);border-radius:4px;padding:12px 16px;margin-bottom:16px}
+.sum-block{flex-shrink:0}
+.sum-lbl{font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;margin-bottom:4px}
+.sum-val{font-size:20px;font-weight:700;letter-spacing:-.02em;color:var(--white)}
+.sum-sub{font-size:9px;color:var(--dim2);margin-top:2px}
+.sum-div{width:1px;background:var(--border2);margin:0 2px;align-self:stretch}
+.c-green{color:var(--green)}.c-amber{color:var(--amber)}.c-red{color:var(--red)}.c-dim{color:var(--dim2)}
+.sig-call{color:var(--green);font-weight:700}.sig-put{color:var(--red);font-weight:700}
+.tabs{display:flex;margin-bottom:12px;border-bottom:1px solid var(--border)}
+.tab{padding:5px 14px;font-size:9px;color:var(--dim);cursor:pointer;
+  border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:.08em;margin-bottom:-1px}
+.tab.on{color:var(--amber);border-bottom-color:var(--amber)}
+.section-lbl{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px}
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:10px;min-width:900px}
+th{font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;
+  font-weight:400;padding:3px 5px 5px;border-bottom:1px solid var(--border);
+  text-align:right;white-space:nowrap}
+th:nth-child(1),th:nth-child(2),th:nth-child(3){text-align:left}
+th:nth-child(1),th:nth-child(2),th:nth-child(3){position:sticky;background:var(--bg);z-index:2}
+th:nth-child(1){left:0}th:nth-child(2){left:44px}th:nth-child(3){left:116px}
+td:nth-child(1),td:nth-child(2),td:nth-child(3){position:sticky;background:var(--surface);z-index:1}
+td:nth-child(1){left:0}td:nth-child(2){left:44px}td:nth-child(3){left:116px}
+td{padding:5px 5px;border-bottom:1px solid var(--border);
+  text-align:right;white-space:nowrap;color:var(--dim2);vertical-align:top}
+td:nth-child(1),td:nth-child(2),td:nth-child(3){text-align:left}
+td.wrap{white-space:normal;max-width:120px;font-size:9px;line-height:1.4}
+tr{border-bottom:2px solid var(--border2)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface)}
+.row-sep{height:4px;background:var(--border2)}
+.empty{text-align:center;padding:32px;color:var(--dim);font-size:12px}
+</style>
+</head>
+<body>
+<div class="page-hdr">
+  <div class="logo">SPY SNIPER &middot; LOG</div>
+  <div class="page-date" id="pg-date"></div>
+  <div class="refresh-info">Refreshes every 10s</div>
+  <button class="btn" id="btn-copy" onclick="copyLog()">COPY LOG</button>
+  <button class="btn btn-danger" onclick="clearLog()">CLEAR LOG</button>
+</div>
+<div id="err-bar" class="err-bar"></div>
+<div id="debug-bar" class="debug-bar">Loading...</div>
+<div class="summary" id="summary"></div>
+<div class="tabs">
+  <div class="tab on" onclick="showTab('today')">TODAY</div>
+  <div class="tab" onclick="showTab('all')">ALL SESSIONS</div>
+  <div class="tab" onclick="showTab('state')">STATE LOG</div>
+</div>
+<div id="state-panel" style="display:none">
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+    <div class="section-lbl" style="margin:0" id="state-lbl">STATE LOG</div>
+    <button class="btn" id="btn-copy-state" onclick="copyStateLog()">COPY STATE LOG</button>
+    <button class="btn btn-danger" onclick="clearStateLog()">CLEAR STATE LOG</button>
+  </div>
+  <div id="state-debug" style="font-size:9px;color:var(--dim2);margin-bottom:8px"></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>TIME</th><th>SIG</th><th>G1</th><th>F1</th><th>RQ</th>
+          <th>COMP</th><th>ABSORP</th><th>MICRO</th><th>TRAP</th>
+          <th>PRICE</th><th>VIX</th><th>F1SW</th><th>SW AGE</th>
+          <th>OI Δ</th><th>COIL↓</th><th>COIL↑</th>
+        </tr>
+      </thead>
+      <tbody id="state-body"></tbody>
+    </table>
+  </div>
+  <div id="state-empty" class="empty" style="display:none">No state snapshots yet — collecting every minute during market hours.</div>
+</div>
+<div class="section-lbl" id="tbl-lbl">TODAY'S SIGNALS</div>
+<div class="tbl-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+  <table>
+    <thead>
+      <tr>
+        <th>TIME</th><th>TYPE</th><th>PRICE</th>
+        <th>G1</th><th>F1</th><th>RQ</th><th>COMP</th>
+        <th>ABSORP</th><th>ABSORP TIMELINE</th>
+        <th>TRAP</th><th>MICRO</th>
+        <th>FR</th><th>FP</th><th>FE</th><th>FTOT</th>
+        <th>TRAP TS</th><th>MICRO TS</th><th>SIG EVENTS</th>
+        <th>+2m</th><th>+5m</th><th>+10m</th><th>+15m</th><th>+30m</th>
+        <th style="border-left:2px solid var(--border2);color:var(--amber)">ENTRY</th>
+        <th style="color:var(--amber)">E+2m</th>
+        <th style="color:var(--amber)">E+5m</th>
+        <th style="color:var(--amber)">E+10m</th>
+        <th style="color:var(--amber)">E+15m</th>
+        <th style="color:var(--amber)">E+30m</th>
+      </tr>
+    </thead>
+    <tbody id="tbl-body"></tbody>
+  </table>
+</div>
+<div id="empty-msg" class="empty" style="display:none">No signals logged yet.</div>
+
+<script>
+var LOG_KEY = 'spy_sniper_log';
+var LOG_MAX = 200;
+var currentTab = 'today';
+
+function etDateStr() {
+  var n=new Date();
+  var jan=new Date(n.getFullYear(),0,1).getTimezoneOffset();
+  var jul=new Date(n.getFullYear(),6,1).getTimezoneOffset();
+  var off=Math.min(jan,jul)!==jan?-4:-5;
+  var e=new Date(n.getTime()+off*3600000+n.getTimezoneOffset()*60000);
+  var p=function(x){return String(x).padStart(2,'0');};
+  return e.getFullYear()+'-'+p(e.getMonth()+1)+'-'+p(e.getDate());
+}
+function getLog() {
+  try { return JSON.parse(localStorage.getItem(LOG_KEY)||'[]'); }
+  catch(e) { return []; }
+}
+function fmtSec(s) {
+  var m=Math.floor(s/60),sec=s%60;
+  return m+':'+String(sec).padStart(2,'0');
+}
+function fmtTs(ts) {
+  if(ts===null||ts===undefined) return '&mdash;';
+  return '+'+fmtSec(ts);
+}
+function fmtSigEvents(ev) {
+  if(!ev||!ev.length) return '&mdash;';
+  return ev.map(function(e){return e.event+'('+fmtSec(e.elapsed)+')';}).join(' ');
+}
+function fmtTimeline(tl) {
+  if(!tl||!tl.length) return '&mdash;';
+  function abbr(s){return s==='ABSORBING'?'ABSRB':s==='CONVERGING'?'CONV':s==='CONFIRMING'?'CONF':s;}
+  return tl.map(function(t,i){return i===0?abbr(t.state):abbr(t.state)+'('+fmtSec(t.elapsed)+')';}).join(' &rarr; ');
+}
+function fmtTimelinePlain(tl) {
+  if(!tl||!tl.length) return '—';
+  function abbr(s){return s==='ABSORBING'?'ABSRB':s==='CONVERGING'?'CONV':s==='CONFIRMING'?'CONF':s;}
+  return tl.map(function(t,i){return i===0?abbr(t.state):abbr(t.state)+'('+fmtSec(t.elapsed)+')';}).join(' > ');
+}
+function scoreColor(v) {
+  if(v===null||v===undefined) return 'var(--dim2)';
+  if(v>0.2) return 'var(--green)';
+  if(v<-0.2) return 'var(--red)';
+  return 'var(--dim2)';
+}
+function trapColor(s){return s==='TRAP'?'var(--red)':s==='TRAP RISK'?'var(--amber)':'var(--dim2)';}
+function microColor(s){return s==='CALL FLOW'?'var(--green)':s==='PUT FLOW'?'var(--red)':s==='FADING'?'var(--amber)':'var(--dim2)';}
+function fragColor(tot){return tot>=3?'var(--red)':tot>=2?'var(--amber)':'var(--dim2)';}
+function ftColor(entry,min) {
+  var p=entry.ft?entry.ft[String(min)]:null;
+  if(p===null||p===undefined) return 'var(--dim)';
+  var dir=(entry.type==='STRONG_CALL'||entry.type==='CALL')?1:-1;
+  var mv=(p-entry.price)*dir;
+  return mv>0.05?'var(--green)':mv<-0.05?'var(--red)':'var(--dim2)';
+}
+function ftText(entry,min) {
+  var p=entry.ft?entry.ft[String(min)]:null;
+  if(p===null||p===undefined) return '&mdash;';
+  var mv=p-entry.price;
+  return (mv>=0?'+':'')+mv.toFixed(2);
+}
+function pctClass(pct){return pct>=70?'c-green':pct>=50?'c-amber':'c-red';}
+function winsAt(arr,min) {
+  var settled=arr.filter(function(e){return e.ft&&e.ft[String(min)]!==null&&e.ft[String(min)]!==undefined;});
+  var wins=settled.filter(function(e){
+    var d=(e.type==='STRONG_CALL'||e.type==='CALL')?1:-1;
+    return (e.ft[String(min)]-e.price)*d>0.05;
+  });
+  return {wins:wins.length,settled:settled.length,pct:settled.length?Math.round(wins.length/settled.length*100):null};
+}
+
+function buildSummary(entries) {
+  var calls=entries.filter(function(e){return e.type==='STRONG_CALL'||e.type==='CALL';});
+  var puts=entries.filter(function(e){return e.type==='STRONG_PUT'||e.type==='PUT';});
+  var s5=winsAt(entries,5), s15=winsAt(entries,15);
+  var html='';
+  html+='<div class="sum-block"><div class="sum-lbl">CALLS</div><div class="sum-val sig-call">'+calls.length+'</div></div>';
+  html+='<div class="sum-div"></div>';
+  html+='<div class="sum-block"><div class="sum-lbl">PUTS</div><div class="sum-val sig-put">'+puts.length+'</div></div>';
+  html+='<div class="sum-div"></div>';
+  html+='<div class="sum-block"><div class="sum-lbl">TOTAL</div><div class="sum-val">'+entries.length+'</div></div>';
+  html+='<div class="sum-div"></div>';
+  var p5cls=s5.pct!==null?pctClass(s5.pct):'c-dim';
+  html+='<div class="sum-block"><div class="sum-lbl">PROFITABLE @5m</div><div class="sum-val '+p5cls+'">'+(s5.pct!==null?s5.pct+'%':'&mdash;')+'</div><div class="sum-sub">'+s5.wins+'/'+s5.settled+'</div></div>';
+  html+='<div class="sum-div"></div>';
+  var p15cls=s15.pct!==null?pctClass(s15.pct):'c-dim';
+  html+='<div class="sum-block"><div class="sum-lbl">PROFITABLE @15m</div><div class="sum-val '+p15cls+'">'+(s15.pct!==null?s15.pct+'%':'&mdash;')+'</div><div class="sum-sub">'+s15.wins+'/'+s15.settled+'</div></div>';
+  document.getElementById('summary').innerHTML=html;
+}
+
+function buildTable(entries) {
+  var tbody=document.getElementById('tbl-body');
+  var empty=document.getElementById('empty-msg');
+  if(!entries.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  var mins=[2,5,10,15,30];
+  var sep='<tr class="row-sep"><td colspan="30"></td></tr>';
+  tbody.innerHTML=entries.map(function(e){
+    var fr=e.frag||{};
+    var isCall=e.type==='STRONG_CALL'||e.type==='CALL';
+    var typeLbl=e.type==='STRONG_CALL'?'STR CALL':e.type==='STRONG_PUT'?'STR PUT':e.type||'—';
+    var typeCol=isCall?'var(--green)':'var(--red)';
+    var scores=['g1','f1'].map(function(k){
+      var v=e[k];
+      if(v===null||v===undefined) return '<td style="color:var(--dim2)">&mdash;</td>';
+      return '<td style="color:'+scoreColor(v)+'">'+(v>=0?'+':'')+v+'</td>';
+    }).join('');
+    var rqVal=e.rq||'&mdash;';
+    var compVal=e.comp!==undefined?(e.comp>=0?'+':'')+e.comp:'&mdash;';
+    var compCol=e.comp!==undefined?scoreColor(e.comp):'var(--dim2)';
+    var abVal=e.absorp||'&mdash;';
+    var trapVal=(e.trap||'NEUTRAL')+(e.trapDetail?' ('+e.trapDetail+')':'');
+    var microVal=e.micro||'&mdash;';
+    var frTot=fr.total!==undefined?fr.total:'&mdash;';
+    var frTotCol=fr.total!==undefined?fragColor(fr.total):'var(--dim2)';
+    var ftCells=mins.map(function(m){
+      return '<td style="color:'+ftColor(e,m)+'">'+ftText(e,m)+'</td>';
+    }).join('');
+    // Entry columns
+    var entryCell='<td style="border-left:2px solid var(--border2);color:var(--dim);font-size:9px">&mdash;</td><td colspan="5" style="color:var(--dim);font-size:9px">&mdash;</td>';
+    if(e.entryPrice){
+      var ep=e.entryPrice, ee=e.entryElapsed||0;
+      var emv=ep-e.price;
+      var eLbl=(emv>=0?'+':'')+emv.toFixed(2)+'@'+fmtSec(ee);
+      var eftCells=[2,5,10,15,30].map(function(m){
+        var p=e.eft?e.eft[String(m)]:null;
+        if(p===null||p===undefined) return '<td style="color:var(--dim);font-size:9px">&mdash;</td>';
+        var mv=p-ep, dir=isCall?1:-1;
+        var col=mv*dir>0.05?'var(--green)':mv*dir<-0.05?'var(--red)':'var(--dim2)';
+        return '<td style="color:'+col+';font-size:9px">'+(mv>=0?'+':'')+mv.toFixed(2)+'</td>';
+      }).join('');
+      entryCell='<td style="border-left:2px solid var(--border2);color:var(--amber);font-size:9px">'+eLbl+'</td>'+eftCells;
+    }
+    return '<tr>'
+      +'<td>'+e.time+'</td>'
+      +'<td style="color:'+typeCol+';font-weight:700">'+typeLbl+'</td>'
+      +'<td>'+(e.price?e.price.toFixed(2):'&mdash;')+'</td>'
+      +scores
+      +'<td style="color:var(--dim2);font-size:9px">'+rqVal+'</td>'
+      +'<td style="color:'+compCol+'">'+compVal+'</td>'
+      +'<td style="color:var(--dim2);font-size:9px">'+abVal+'</td>'
+      +'<td class="wrap" style="color:var(--dim2)">'+fmtTimeline(e.absorpTimeline)+'</td>'
+      +'<td style="color:'+trapColor(e.trap||'NEUTRAL')+';font-size:9px">'+trapVal+'</td>'
+      +'<td style="color:'+microColor(e.micro||'')+';font-size:9px">'+microVal+'</td>'
+      +'<td style="color:var(--dim2);font-size:9px">'+(fr.R!==undefined?fr.R:'&mdash;')+'</td>'
+      +'<td style="color:var(--dim2);font-size:9px">'+(fr.P!==undefined?fr.P:'&mdash;')+'</td>'
+      +'<td style="color:var(--dim2);font-size:9px">'+(fr.E!==undefined?fr.E:'&mdash;')+'</td>'
+      +'<td style="color:'+frTotCol+';font-size:9px;font-weight:'+(fr.total>=2?'700':'400')+'">'+frTot+'</td>'
+      +'<td style="color:var(--amber);font-size:9px">'+fmtTs(e.trapTs)+'</td>'
+      +'<td style="color:var(--amber);font-size:9px">'+fmtTs(e.microTs)+'</td>'
+      +'<td class="wrap" style="color:var(--dim2)">'+fmtSigEvents(e.sigEvents)+'</td>'
+      +ftCells
+      +entryCell
+      +'</tr>';
+  }).join(sep);
+}
+
+function showTab(tab) {
+  currentTab=tab;
+  document.querySelectorAll('.tab').forEach(function(t,i){
+    t.classList.toggle('on',(i===0&&tab==='today')||(i===1&&tab==='all')||(i===2&&tab==='state'));
+  });
+  // Show/hide state panel vs main table
+  var sp=document.getElementById('state-panel');
+  var tw=document.querySelector('.tbl-wrap');
+  var em=document.getElementById('empty-msg');
+  var su=document.getElementById('summary');
+  if(tab==='state'){
+    if(sp) sp.style.display='block';
+    if(tw) tw.style.display='none';
+    if(em) em.style.display='none';
+    if(su) su.style.display='none';
+    renderStateLog();
+  } else {
+    if(sp) sp.style.display='none';
+    if(tw) tw.style.display='';
+    if(su) su.style.display='';
+    render();
+  }
+}
+
+function render() {
+  var today=etDateStr();
+  document.getElementById('pg-date').textContent=today;
+  var log=getLog();
+  var entries=currentTab==='today'?log.filter(function(e){return e.date===today;}):log;
+  document.getElementById('tbl-lbl').textContent=
+    currentTab==='today'?"TODAY'S SIGNALS ("+today+')':
+    'ALL SESSIONS ('+log.length+' total)';
+  buildSummary(entries);
+  buildTable(entries);
+  // Debug bar — shows localStorage health from dashboard tab
+  var dbEl=document.getElementById('debug-bar');
+  if(dbEl){
+    var hb=null;
+    try{hb=JSON.parse(localStorage.getItem('spy_sniper_hb')||'null');}catch(e2){}
+    var hbStr=hb?('Dashboard HB: sig='+hb.sig+' hm='+hb.hm+' logCount='+hb.logCount+' age='+Math.round((Date.now()-hb.ts)/1000)+'s ago'):'No heartbeat from dashboard — check if dashboard tab is open';
+    var rawLen=localStorage.getItem(LOG_KEY)?localStorage.getItem(LOG_KEY).length:0;
+    dbEl.textContent=hbStr+' | LOG raw bytes: '+rawLen;
+  }
+  // Error bar
+  var errEl=document.getElementById('err-bar');
+  if(errEl){
+    var err=localStorage.getItem('spy_sniper_log_err');
+    if(err){
+      try{var ed=JSON.parse(err);errEl.textContent='LOG ERR: '+ed.err+' | sig='+ed.sig+' | hm='+parseFloat(ed.hm).toFixed(2);}
+      catch(e2){errEl.textContent='LOG ERR: '+err;}
+      errEl.style.display='block';
+    } else {
+      errEl.style.display='none';
+    }
+  }
+}
+
+function copyLog() {
+  var today=etDateStr();
+  var log=getLog();
+  var entries=currentTab==='today'?log.filter(function(e){return e.date===today;}):log;
+  if(!entries.length){alert('No signals to copy.');return;}
+  var header=['TIME','TYPE','PRICE','G1','F1','RQ','COMP','ABSORP','ABSORP TIMELINE',
+    'TRAP','MICRO','FR','FP','FE','FTOT','TRAP-TS','MICRO-TS','SIG-EVENTS',
+    '+2m','+5m','+10m','+15m','+30m','ENTRY','E+2m','E+5m','E+10m','E+15m','E+30m'].join('\t');
+  var mins=[2,5,10,15,30];
+  var rows=entries.map(function(e){
+    var fr=e.frag||{};
+    var ftCols=mins.map(function(m){
+      var p=e.ft?e.ft[String(m)]:null;
+      if(p===null||p===undefined) return '—';
+      var mv=p-e.price; return (mv>=0?'+':'')+mv.toFixed(2);
+    });
+    var entryCol='—';
+    if(e.entryPrice){var mv=e.entryPrice-e.price,ee=e.entryElapsed||0;entryCol=(mv>=0?'+':'')+mv.toFixed(2)+'@'+fmtSec(ee);}
+    var eftCols=mins.map(function(m){
+      var p=e.eft?e.eft[String(m)]:null;
+      if(p===null||p===undefined) return '—';
+      var mv=p-(e.entryPrice||e.price); return (mv>=0?'+':'')+mv.toFixed(2);
+    });
+    return [
+      e.time,
+      e.type==='STRONG_CALL'?'STR CALL':e.type==='STRONG_PUT'?'STR PUT':(e.type||'—'),
+      e.price?e.price.toFixed(2):'—',
+      e.g1!==undefined?(e.g1>=0?'+':'')+e.g1:'—',
+      e.f1!==undefined?(e.f1>=0?'+':'')+e.f1:'—',
+      e.rq||'—',
+      e.comp!==undefined?(e.comp>=0?'+':'')+e.comp:'—',
+      e.absorp||'—',
+      fmtTimelinePlain(e.absorpTimeline),
+      (e.trap||'NEUTRAL')+(e.trapDetail?' ('+e.trapDetail+')':''),
+      e.micro||'—',
+      fr.R!==undefined?fr.R:'—',
+      fr.P!==undefined?fr.P:'—',
+      fr.E!==undefined?fr.E:'—',
+      fr.total!==undefined?fr.total:'—',
+      e.trapTs!==null&&e.trapTs!==undefined?'+'+fmtSec(e.trapTs):'—',
+      e.microTs!==null&&e.microTs!==undefined?'+'+fmtSec(e.microTs):'—',
+      e.sigEvents&&e.sigEvents.length?e.sigEvents.map(function(ev){return ev.event+'('+fmtSec(ev.elapsed)+')';}).join(' '):'—'
+    ].concat(ftCols).concat([entryCol]).concat(eftCols).join('\t');
+  }).join('\n');
+  var summary=[
+    'SPY SNIPER LOG — '+(currentTab==='today'?today:'ALL'),
+    'Signals: '+entries.length+'  Calls: '+entries.filter(function(e){return e.type==='STRONG_CALL'||e.type==='CALL';}).length+'  Puts: '+entries.filter(function(e){return e.type==='STRONG_PUT'||e.type==='PUT';}).length,
+    '',header,rows
+  ].join('\n');
+  navigator.clipboard.writeText(summary).then(function(){
+    var btn=document.getElementById('btn-copy');
+    btn.textContent='COPIED!';btn.style.color='var(--green)';
+    setTimeout(function(){btn.textContent='COPY LOG';btn.style.color='';},2000);
+  }).catch(function(){
+    var ta=document.createElement('textarea');
+    ta.value=summary;
+    ta.style.cssText='position:fixed;top:0;left:0;width:100%;height:200px;z-index:9999;font-size:10px;background:#0d1117;color:#a8bcc4;border:1px solid #f5a623;padding:8px;';
+    document.body.appendChild(ta);ta.select();
+    alert('Clipboard blocked. Copy manually (Cmd+C).');
+    setTimeout(function(){ta.remove();},10000);
+  });
+}
+
+function clearLog() {
+  if(!confirm('Clear the entire signal log? This cannot be undone.')) return;
+  localStorage.removeItem(LOG_KEY);
+  render();
+}
+
+/* ── State log functions ── */
+var STATE_LOG_KEY = 'spy_sniper_state_log';
+
+function getStateLog() {
+  try { return JSON.parse(localStorage.getItem(STATE_LOG_KEY)||'[]'); }
+  catch(e) { return []; }
+}
+
+function sigColor(s) {
+  if(s==='STRONG_CALL'||s==='CALL') return 'var(--green)';
+  if(s==='STRONG_PUT'||s==='PUT')   return 'var(--red)';
+  return 'var(--dim2)';
+}
+function sigLbl(s) {
+  return s==='STRONG_CALL'?'STR CALL':s==='STRONG_PUT'?'STR PUT':s||'NEUTRAL';
+}
+
+function renderStateLog() {
+  var today = etDateStr();
+  var snaps = getStateLog();
+  var dbEl = document.getElementById('state-debug');
+  var lblEl = document.getElementById('state-lbl');
+  var tbody = document.getElementById('state-body');
+  var empty = document.getElementById('state-empty');
+
+  if(dbEl) dbEl.textContent = snaps.length+' total snapshots · oldest: '+(snaps.length?snaps[0].date+' '+snaps[0].time:'—')+' · newest: '+(snaps.length?snaps[snaps.length-1].date+' '+snaps[snaps.length-1].time:'—');
+
+  // Show today's snaps by default, newest first
+  var todaySnaps = snaps.filter(function(s){return s.date===today;}).reverse();
+  if(lblEl) lblEl.textContent='STATE LOG — TODAY ('+todaySnaps.length+' snaps)';
+
+  if(!todaySnaps.length){ if(tbody) tbody.innerHTML=''; if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display='none';
+
+  if(tbody) tbody.innerHTML = todaySnaps.map(function(s){
+    var sc=scoreColor(s.comp);
+    var ageStr=s.sweepAge!==null?s.sweepAge+'m':'—';
+    var oiStr=s.oiDelta!==null?(s.oiDelta>=0?'+':'')+Math.round(s.oiDelta/1000)+'K':'—';
+    return '<tr>'
+      +'<td>'+s.time+'</td>'
+      +'<td style="color:'+sigColor(s.sig)+';font-size:9px;font-weight:700">'+sigLbl(s.sig)+'</td>'
+      +'<td style="color:'+scoreColor(s.g1)+'">'+((s.g1>=0?'+':'')+s.g1)+'</td>'
+      +'<td style="color:'+scoreColor(s.f1)+'">'+((s.f1>=0?'+':'')+s.f1)+'</td>'
+      +'<td style="color:var(--dim2);font-size:9px">'+s.rq+'</td>'
+      +'<td style="color:'+sc+'">'+((s.comp>=0?'+':'')+s.comp)+'</td>'
+      +'<td style="color:var(--dim2);font-size:9px">'+(s.absorp||'—')+'</td>'
+      +'<td style="color:var(--dim2);font-size:9px">'+(s.micro||'—')+'</td>'
+      +'<td style="color:var(--dim2);font-size:9px">'+(s.trap||'—')+'</td>'
+      +'<td>'+s.price+'</td>'
+      +'<td style="color:var(--dim2)">'+(s.vix||'—')+'</td>'
+      +'<td style="color:'+scoreColor(s.f1Sweep)+'">'+(s.f1Sweep>=0?'+':'')+s.f1Sweep+'</td>'
+      +'<td style="color:var(--dim2)">'+ageStr+'</td>'
+      +'<td style="color:var(--dim2)">'+oiStr+'</td>'
+      +'<td style="color:'+(s.coilBear>=3?'var(--red)':'var(--dim2)')+'">'+s.coilBear+'</td>'
+      +'<td style="color:'+(s.coilBull>=3?'var(--green)':'var(--dim2)')+'">'+s.coilBull+'</td>'
+      +'</tr>';
+  }).join('');
+}
+
+function copyStateLog() {
+  var today = etDateStr();
+  var snaps = getStateLog();
+  var todaySnaps = snaps.filter(function(s){return s.date===today;}).reverse();
+  if(!todaySnaps.length){
+    var allSnaps=snaps.slice().reverse();
+    if(!allSnaps.length){alert('No state snapshots yet.');return;}
+    todaySnaps=allSnaps;
+  }
+  // Analysis-ready: clean numeric values, no units embedded, metadata header
+  var header=[
+    'DATE','TIME','TIMESTAMP_MS',
+    'SIG_STATE','SIG_IS_STRONG','SIG_DIR',
+    'G1','F1','RQ_STATE','RQ_DIR','COMP',
+    'ABSORP','MICRO','TRAP','TRAP_MICRO',
+    'PRICE','VIX',
+    'F1_SWEEP_SCORE','F1_SWEEP_DIR','SWEEP_AGE_MIN',
+    'OI_DELTA_K','COIL_BEAR','COIL_BULL'
+  ].join('	');
+  var rows=todaySnaps.map(function(s){
+    var isStrong=(s.sig==='STRONG_CALL'||s.sig==='STRONG_PUT')?1:0;
+    var sigDir=s.sig==='STRONG_CALL'||s.sig==='CALL'?1:s.sig==='STRONG_PUT'||s.sig==='PUT'?-1:0;
+    var rqDirVal=s.rqDir!==undefined?s.rqDir:0;
+    return [
+      s.date, s.time, s.ts||'',
+      s.sig||'NEUTRAL', isStrong, sigDir,
+      s.g1!==undefined?s.g1:'',
+      s.f1!==undefined?s.f1:'',
+      s.rq||'NEUTRAL', rqDirVal,
+      s.comp!==undefined?s.comp:'',
+      s.absorp&&s.absorp!=='—'?s.absorp:'',
+      s.micro&&s.micro!=='—'?s.micro:'',
+      s.trap&&s.trap!=='—'?s.trap:'',
+      s.trapMicro&&s.trapMicro!=='—'?s.trapMicro:'',
+      s.price!==undefined?s.price:'',
+      s.vix!==null&&s.vix!==undefined?s.vix:'',
+      s.f1Sweep!==undefined?s.f1Sweep:'',
+      s.sweepDir!==undefined?s.sweepDir:'',
+      s.sweepAge!==null&&s.sweepAge!==undefined?s.sweepAge:'',
+      s.oiDelta!==null&&s.oiDelta!==undefined?Math.round(s.oiDelta/1000):'',
+      s.coilBear!==undefined?s.coilBear:'',
+      s.coilBull!==undefined?s.coilBull:''
+    ].join('	');
+  }).join('\n');
+  var meta='# SPY SNIPER STATE LOG\n# Date: '+today+'\n# Snapshots: '+todaySnaps.length+' | Interval: 1-min | Format: TSV\n# Columns: numeric values only, no unit suffixes\n#\n';
+  var txt=meta+header+'\n'+rows;
+  navigator.clipboard.writeText(txt).then(function(){
+    var btn=document.getElementById('btn-copy-state');
+    btn.textContent='COPIED!';btn.style.color='var(--green)';
+    setTimeout(function(){btn.textContent='COPY STATE LOG';btn.style.color='';},2000);
+  }).catch(function(){
+    var ta=document.createElement('textarea');
+    ta.value=txt;
+    ta.style.cssText='position:fixed;top:0;left:0;width:100%;height:200px;z-index:9999;font-size:10px;background:#0d1117;color:#a8bcc4;border:1px solid #f5a623;padding:8px;';
+    document.body.appendChild(ta);ta.select();
+    alert('Clipboard blocked. Copy manually (Cmd+C).');
+    setTimeout(function(){ta.remove();},10000);
+  });
+}
+function clearStateLog() {
+  if(!confirm('Clear the entire state log? This cannot be undone.')) return;
+  localStorage.removeItem(STATE_LOG_KEY);
+  renderStateLog();
+}
+
+render();
+setInterval(render,10000);
+</script>
+</body>
+</html>
