@@ -1,1 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>SPY SNIPER v2</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#040507;--surface:#080b0e;--surface2:#0d1117;
+  --border:#181e26;--border2:#242d36;
+  --text:#a8bcc4;--dim:#384550;--dim2:#506070;
+  --amber:#f5a623;--green:#18d46c;--red:#f02848;--blue:#3490ff;--white:#e0eaee;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:11px}
+#app{display:flex;flex-direction:column;height:100vh}
 
+/* ── HEADER ─────────────────────────────────── */
+#hdr{display:flex;align-items:center;gap:12px;padding:0 12px;
+  height:76px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.logo{font-family:'Syncopate',sans-serif;font-size:9px;font-weight:700;
+  color:var(--amber);letter-spacing:.08em;line-height:1.3;flex-shrink:0}
+.vd{width:1px;height:44px;background:var(--border2);flex-shrink:0}
+#h-price{font-size:36px;font-weight:700;color:var(--white);
+  letter-spacing:-.03em;transition:color .15s}
+#h-chg{font-size:14px;font-weight:600;margin-left:6px}
+.price-lbl{font-size:8px;color:var(--dim);letter-spacing:.12em;margin-top:2px}
+.stat{flex-shrink:0}
+.sl{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
+.sv{font-size:16px;font-weight:600;color:var(--white);transition:color .15s}
+/* boxed header stat — DRIFT, HEC, GIA, DSC, GX, COSMIC */
+.stat-box{flex-shrink:0;background:var(--surface2);border:1px solid var(--border2);
+  border-radius:3px;padding:6px 14px;min-width:90px}
+@keyframes cosmicPulse{0%,100%{box-shadow:0 0 6px 2px #ffd700,0 0 12px 4px rgba(255,215,0,.4)}50%{box-shadow:0 0 14px 6px #ffd700,0 0 28px 10px rgba(255,215,0,.7)}}
+.stat-box.cosmic-active{background:#1a1500;border-color:#ffd700;animation:cosmicPulse 1.2s ease-in-out infinite;}
+.stat-box .sl{font-size:8px;color:var(--dim);text-transform:uppercase;
+  letter-spacing:.10em;margin-bottom:4px}
+.stat-box .sv{font-size:20px;font-weight:700;letter-spacing:-.02em;
+  color:var(--white);transition:color .2s;white-space:nowrap}
+#h-vix-wrap{flex-shrink:0}
+#h-vix{font-size:26px;font-weight:700;letter-spacing:-.02em;transition:color .15s}
+#h-vix-chg{font-size:11px;font-weight:600;color:var(--dim2);margin-top:1px}
+.vix-lbl{font-size:8px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
+.hdr-space{flex:1}
+#stale-tag{font-size:8px;color:var(--red);letter-spacing:.1em;
+  animation:blink 1s step-start infinite;display:none}
+@keyframes blink{50%{opacity:0}}
+.cfg-btn{background:none;border:1px solid var(--border2);color:var(--dim2);
+  font-family:'JetBrains Mono',monospace;font-size:9px;padding:6px 12px;
+  border-radius:2px;cursor:pointer;flex-shrink:0}
+.cfg-btn:hover{border-color:var(--amber);color:var(--amber)}
+
+/* ── SIGNAL PANEL ────────────────────────────── */
+#sigs{display:flex;align-items:stretch;height:130px;
+  background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;overflow:hidden}
+.sig-main{display:flex;flex-direction:column;justify-content:center;
+  padding:8px 20px;border-right:1px solid var(--border);min-width:190px;flex-shrink:0}
+.sig-lbl{font-family:'Syncopate',sans-serif;font-size:7px;color:var(--dim);
+  letter-spacing:.12em;margin-bottom:3px}
+.sig-state{font-size:28px;font-weight:700;letter-spacing:-.02em;
+  line-height:1.1;transition:color .3s}
+.sig-comp{font-size:18px;font-weight:700;letter-spacing:-.02em;
+  color:var(--dim2);margin-top:2px;transition:color .3s}
+.sig-sub{font-size:9px;color:var(--dim2);margin-top:2px}
+.sig-cards{flex:1;display:flex;align-items:stretch;min-width:0}
+.scard{display:flex;flex-direction:column;padding:9px 13px 8px;
+  border-right:1px solid var(--border);flex:1;min-width:0;overflow:hidden}
+.sc-hdr{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.sc-id{font-family:'Syncopate',sans-serif;font-size:10px;font-weight:700;
+  color:var(--amber);flex-shrink:0}
+.sc-name{font-size:8px;color:var(--dim);text-transform:uppercase;
+  letter-spacing:.1em;flex-shrink:0}
+.sc-dot{width:9px;height:9px;border-radius:50%;margin-left:auto;flex-shrink:0;
+  background:var(--dim);transition:background .3s}
+.sc-dot.call{background:var(--green)}
+.sc-dot.put{background:var(--red)}
+.sc-dot.warn{background:var(--amber)}
+.sc-score{font-size:22px;font-weight:700;letter-spacing:-.02em;
+  color:var(--dim2);transition:color .3s;line-height:1;margin-bottom:4px}
+.sc-val{font-size:9px;color:var(--dim2);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;line-height:1.4}
+.sc-lbl{font-size:7px;color:var(--dim);text-transform:uppercase;
+  letter-spacing:.1em;margin-top:2px}
+.sig-right{display:flex;flex-direction:column;justify-content:center;
+  padding:6px 12px;min-width:130px;flex-shrink:0;gap:4px}
+.sdot{display:inline-block;width:5px;height:5px;border-radius:50%;
+  margin-right:4px;vertical-align:middle}
+.sg{background:var(--green)}.sr{background:var(--red)}
+
+/* ── TOOLBAR ─────────────────────────────────── */
+#toolbar{display:flex;align-items:center;gap:6px;padding:4px 10px;
+  background:var(--surface2);border-bottom:1px solid var(--border);flex-shrink:0}
+.tf{background:var(--surface);border:1px solid var(--border2);color:var(--dim2);
+  font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;
+  border-radius:2px;cursor:pointer}
+.tf.on{background:var(--amber);border-color:var(--amber);color:#000;font-weight:700}
+.zb{background:var(--surface);border:1px solid var(--border2);color:var(--dim2);
+  font-size:14px;width:22px;height:22px;display:flex;align-items:center;
+  justify-content:center;border-radius:2px;cursor:pointer;user-select:none}
+.tsep{width:1px;height:14px;background:var(--border2);margin:0 2px}
+.tsp{flex:1}
+.leg{display:flex;align-items:center;gap:4px;font-size:8px;color:var(--dim2)}
+.legdot{width:12px;height:2px;border-radius:1px}
+
+/* ── CHART ───────────────────────────────────── */
+#chart-wrap{flex:1;min-height:0;background:var(--bg);display:flex}
+#chart{flex:1;min-width:0;height:100%}
+#gex-panel{width:220px;flex-shrink:0;background:var(--surface);
+  border-left:1px solid var(--border);position:relative;overflow:hidden}
+#gex-canvas{width:100%;height:100%;display:block}
+
+/* ── STATUS ──────────────────────────────────── */
+#status{display:flex;align-items:center;gap:12px;padding:0 10px;
+  height:20px;background:var(--bg);border-top:1px solid var(--border);
+  flex-shrink:0;font-size:8px;color:var(--dim)}
+.ssp{flex:1}
+
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.35;}}
+
+/* ── UNIFIED LOG PANEL ───────────────────────── */
+#log-panel{display:flex;flex-shrink:0;border-top:1px solid var(--border);
+  background:var(--bg);flex-direction:column;max-height:220px}
+#log-hdr{display:flex;align-items:center;gap:8px;padding:4px 10px;
+  background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+#log-hdr .log-title{font-family:'Syncopate',sans-serif;font-size:8px;
+  font-weight:700;color:var(--amber);letter-spacing:.1em}
+#log-hdr .log-meta{font-size:9px;color:var(--dim2)}
+#log-hdr .log-sp{flex:1}
+.log-btn{background:none;border:1px solid var(--border2);color:var(--dim2);
+  font-family:'JetBrains Mono',monospace;font-size:8px;padding:2px 8px;
+  border-radius:2px;cursor:pointer}
+.log-btn:hover{border-color:var(--amber);color:var(--amber)}
+.log-btn.danger:hover{border-color:var(--red);color:var(--red)}
+#log-scroll{overflow-x:auto;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+#log-tbl{width:100%;border-collapse:collapse;font-size:9px;white-space:nowrap}
+#log-tbl th{font-size:7px;color:var(--dim);text-transform:uppercase;
+  letter-spacing:.06em;padding:3px 6px;border-bottom:1px solid var(--border);
+  text-align:right;position:sticky;top:0;background:var(--surface);z-index:1}
+#log-tbl th:first-child,#log-tbl th:nth-child(2){text-align:left}
+#log-tbl td{padding:3px 6px;border-bottom:1px solid var(--border);
+  text-align:right;color:var(--dim2)}
+#log-tbl td:first-child,#log-tbl td:nth-child(2){text-align:left}
+#log-tbl tr:hover td{background:var(--surface)}
+
+/* ── MODAL ───────────────────────────────────── */
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);
+  display:none;align-items:center;justify-content:center;z-index:200}
+#overlay.open{display:flex}
+.modal{background:var(--surface2);border:1px solid var(--border2);
+  border-radius:4px;padding:22px;width:480px;max-width:95vw;
+  max-height:90vh;overflow-y:auto}
+.mhdr{font-family:'Syncopate',sans-serif;font-size:9px;font-weight:700;
+  color:var(--amber);letter-spacing:.1em;margin-bottom:16px}
+.msec{font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.12em;
+  margin:12px 0 7px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.mf{margin-bottom:9px}
+.mf label{display:block;font-size:8px;color:var(--dim2);margin-bottom:3px;
+  text-transform:uppercase;letter-spacing:.08em}
+.mf input{width:100%;background:var(--bg);border:1px solid var(--border2);
+  color:var(--text);font-family:'JetBrains Mono',monospace;font-size:10px;
+  padding:7px 8px;border-radius:3px;outline:none}
+.mf input:focus{border-color:var(--amber)}
+.mfoot{display:flex;gap:8px;justify-content:flex-end;padding-top:12px;
+  border-top:1px solid var(--border);margin-top:14px}
+.btn{padding:7px 16px;font-family:'JetBrains Mono',monospace;font-size:9px;
+  border-radius:3px;cursor:pointer;border:none;letter-spacing:.06em}
+.btnp{background:var(--amber);color:#000;font-weight:700}
+.btns{background:transparent;color:var(--dim2);border:1px solid var(--border2)}
+
+/* ── SPLASH ──────────────────────────────────── */
+#splash{position:fixed;inset:0;background:var(--bg);display:none;
+  align-items:center;justify-content:center;z-index:100;
+  flex-direction:column;gap:14px}
+#splash.open{display:flex}
+.slogo{font-family:'Syncopate',sans-serif;font-size:16px;color:var(--amber);
+  letter-spacing:.12em}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <div id="hdr">
+    <div class="logo">SPY<br>SNIPER</div>
+    <div class="vd"></div>
+    <div>
+      <div><span id="h-price">---</span><span id="h-chg"></span></div>
+      <div class="price-lbl">SPY</div>
+    </div>
+    <div class="vd"></div>
+    <div class="stat"><div class="sl">VWAP</div><div class="sv" id="h-vwap">---</div></div>
+    <div class="vd"></div>
+    <div id="h-vix-wrap">
+      <div class="vix-lbl">VIX</div>
+      <div id="h-vix" style="color:var(--dim)">---</div>
+      <div id="h-vix-chg" style="color:var(--dim2)"></div>
+    </div>
+    <div class="vd"></div>
+    <div class="stat-box"><div class="sl">DRIFT</div><div class="sv" id="h-drift" style="color:var(--dim);font-size:10px">—</div></div>
+    <div class="stat-box"><div class="sl">HEC</div><div class="sv" id="h-hec" style="color:var(--dim);font-size:10px">—</div></div>
+    <div class="stat-box"><div class="sl">GIA</div><div class="sv" id="h-gia" style="color:var(--dim);font-size:10px">—</div></div>
+    <div class="stat-box" style="min-width:110px"><div class="sl">DSC</div><div class="sv" id="h-dsc" style="color:var(--dim);font-size:10px">—</div></div>
+    <div class="stat-box"><div class="sl">GX</div><div class="sv" id="h-gx" style="color:var(--dim);font-size:11px">—</div></div>
+    <div class="stat-box" id="cosmic-box"><div class="sl" style="color:var(--dim)">☄️ COSMIC</div><div class="sv" id="h-cosmic" style="color:var(--dim);font-size:11px">—</div></div>
+    <div class="hdr-space"></div>
+    <div id="stale-tag">&#9888; STALE</div>
+    <button class="cfg-btn" onclick="openModal()">&#9881; CONFIG</button>
+  </div>
+
+  <!-- SIGNAL PANEL -->
+  <div id="sigs">
+    <div class="sig-main">
+      <div class="sig-lbl">SIGNAL</div>
+      <div class="sig-state" id="sig-state">NEUTRAL</div>
+      <div class="sig-comp" id="sig-comp">+0.0</div>
+      <div class="sig-sub" id="sig-sub">Awaiting data</div>
+    </div>
+    <div class="sig-cards">
+      <div class="scard">
+        <div class="sc-hdr">
+          <div class="sc-id">G1</div>
+          <div class="sc-name">STRUCTURE</div>
+          <div class="sc-dot" id="ld-g1"></div>
+        </div>
+        <div class="sc-score" id="sc-g1">—</div>
+        <div class="sc-val" id="lv-g1">—</div>
+        <div class="sc-lbl">DEALER POS</div>
+      </div>
+      <div class="scard">
+        <div class="sc-hdr">
+          <div class="sc-id">F1</div>
+          <div class="sc-name">FLOW</div>
+          <div class="sc-dot" id="ld-f1"></div>
+        </div>
+        <div class="sc-score" id="sc-f1">—</div>
+        <div class="sc-val" id="lv-f1">WATCHING</div>
+        <div class="sc-lbl">OPTIONS FLOW</div>
+      </div>
+      <div class="scard" style="border-right:none;border-color:var(--border2)">
+        <div class="sc-hdr">
+          <div class="sc-id">WX</div>
+          <div class="sc-name">PRICE ACTION</div>
+          <div class="sc-dot" id="ld-wx"></div>
+        </div>
+        <div class="sc-score" id="sc-wx" style="font-size:16px">—</div>
+        <div class="sc-val" id="lv-wx">—</div>
+        <div class="sc-lbl">WICK EXHAUSTION</div>
+      </div>
+    </div>
+    <div class="sig-right">
+      <div style="font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px">DATA</div>
+      <div style="font-size:9px;color:var(--dim2)">
+        <span class="sdot sr" id="ds-uw"></span>UW
+        <span class="sdot sr" id="ds-tr" style="margin-left:6px"></span>TR
+        <span class="sdot sr" id="ds-bars" style="margin-left:6px"></span>BARS
+      </div>
+      <div style="font-size:7px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;margin:5px 0 3px">ALERTS</div>
+      <div style="font-size:9px;color:var(--dim2)">
+        <span class="sdot sr" id="push-dot"></span><span id="push-lbl">Pushover off</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div id="toolbar">
+    <button class="tf on" onclick="setTf(1)">1M</button>
+    <button class="tf" onclick="setTf(5)">5M</button>
+    <button class="tf" onclick="setTf(15)">15M</button>
+    <button class="tf" onclick="setTf(30)">30M</button>
+    <div class="tsp"></div>
+    <div class="tsep"></div>
+    <button class="zb" onclick="zoom(1)">+</button>
+    <button class="zb" onclick="zoom(-1)">&minus;</button>
+    <div class="tsp"></div>
+    <div class="leg"><div class="legdot" style="background:var(--amber)"></div>EMA8</div>
+    <div class="leg"><div class="legdot" style="background:var(--blue)"></div>EMA21</div>
+    <div class="leg"><div class="legdot" style="background:rgba(224,234,238,.4)"></div>VWAP</div>
+    <div class="leg"><div class="legdot" style="background:var(--green)"></div><span id="leg-cwall">CWall</span></div>
+    <div class="leg"><div class="legdot" style="background:var(--red)"></div><span id="leg-pwall">PWall</span></div>
+  </div>
+
+  <!-- CHART -->
+  <div id="chart-wrap">
+    <div id="chart"></div>
+    <div id="gex-panel"><canvas id="gex-canvas"></canvas></div>
+  </div>
+
+  <!-- STATUS -->
+  <div id="status">
+    <span id="sb-time">--:--:--</span>
+    <span id="sb-bars">NO DATA</span>
+    <div class="ssp"></div>
+    <span>5s · 30s · v2</span>
+  </div>
+
+  <!-- UNIFIED LOG -->
+  <div id="log-panel">
+    <div id="log-hdr">
+      <span class="log-title">UNIFIED LOG</span>
+      <span id="log-meta" class="log-meta">—</span>
+      <span class="log-sp"></span>
+      <button class="log-btn" onclick="copyUnifiedLog()">&#8659; COPY TSV</button>
+      <button class="log-btn danger" onclick="clearUnifiedLog()">CLEAR</button>
+    </div>
+    <div id="log-scroll">
+      <table id="log-tbl">
+        <thead><tr>
+          <th>TIME</th><th>SIG</th><th>COMP</th>
+          <th>G1</th><th>F1</th><th>DTE</th><th>WX</th><th>DRIFT</th><th>HEC</th><th>GIA</th><th>DSC</th>
+          <th>ABSORP</th>
+          <th>GX</th>
+          <th>PRICE</th><th>VIX</th>
+          <th>+2m</th><th>+5m</th><th>+10m</th><th>+15m</th>
+        </tr></thead>
+        <tbody id="log-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CONFIG MODAL -->
+  <div id="overlay" onclick="bgClick(event)">
+    <div class="modal">
+      <div class="mhdr">SPY SNIPER CONFIG</div>
+      <div class="msec">Proxy</div>
+      <div class="mf">
+        <label>Worker URL</label>
+        <input id="c-proxy" type="url" placeholder="https://your-worker.workers.dev"/>
+      </div>
+      <div class="msec">Alerts</div>
+      <div class="mf">
+        <label>Pushover Token</label>
+        <input id="c-pt" type="text" placeholder="App token"/>
+      </div>
+      <div class="mf">
+        <label>Pushover User</label>
+        <input id="c-pu" type="text" placeholder="User key"/>
+      </div>
+      <div class="mfoot">
+        <button class="btn btns" onclick="closeModal()">CANCEL</button>
+        <button class="btn btnp" onclick="saveAndApply()">SAVE &amp; CONNECT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SPLASH -->
+  <div id="splash" class="open">
+    <div class="slogo">SPY SNIPER v2</div>
+    <div style="font-size:9px;color:var(--dim2)">Configure proxy URL to connect</div>
+    <button class="btn btnp" onclick="openModal()" style="margin-top:8px">&#9881; CONFIG</button>
+  </div>
+
+</div>
+
+<!-- Single module entry point — all logic is in ES modules -->
+<script type="module">
+  import { initChart }    from './render/chart.js';
+  import { refreshPushUI } from './render/header.js';
+  import { startPolling } from './core/updateUI.js';
+
+  // Check for saved config — auto-start if proxy already configured
+  const CFG_KEY = 'spy_sniper_v4';
+  let cfg = { proxyUrl:'', pushoverToken:'', pushoverUser:'' };
+  try { Object.assign(cfg, JSON.parse(localStorage.getItem(CFG_KEY)||'{}')); } catch(e){}
+
+  initChart();
+  refreshPushUI();
+
+  if(cfg.proxyUrl){
+    document.getElementById('splash').classList.remove('open');
+    startPolling();
+  } else {
+    document.getElementById('splash').classList.add('open');
+  }
+</script>
+</body>
+</html>
