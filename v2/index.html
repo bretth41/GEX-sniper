@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>SPY SNIPER v2</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --white:#F8F7F4; --paper:#F0EEE9; --paper2:#E8E5DF;
+  --rule:#D5D3CC;  --rule2:#C2C0B8;
+  --ink:#181816;   --ink2:#3A3A36; --ink3:#7A7A72; --ink4:#AEADA6;
+  --call:#1A6636;  --call-bg:#EAF4EE; --call-lt:#C8E8D4; --call-mid:#3DA864;
+  --put:#A81C1C;   --put-bg:#F8EAEA;  --put-lt:#EDCACA;  --put-mid:#D44444;
+  --amber:#A84800; --amber-bg:#FDF0E2;--amber-lt:#F0D0A0; --amber-mid:#D07018;
+  --gold:#8B6914;  --gold-bg:#FEF9EC; --gold-lt:#F0D878;  --gold-mid:#C8A020;
+  /* Legacy aliases so inline style strings using old names still resolve */
+  --green:var(--call-mid); --red:var(--put-mid); --dim:var(--ink3); --dim2:var(--ink2);
+}
+html,body{height:100%;background:var(--white);color:var(--ink);
+  font-family:'IBM Plex Sans',sans-serif;font-size:11px;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100vh}
+
+/* ══ PRICE BAR ════════════════════════════════════════════════ */
+#pbar{flex-shrink:0;display:flex;align-items:center;height:48px;
+  padding:0 14px;background:var(--white);border-bottom:1.5px solid var(--rule2)}
+#h-price{font-size:34px;font-weight:700;letter-spacing:-.03em;color:var(--ink);
+  line-height:1;font-family:'IBM Plex Sans',sans-serif;transition:color .15s}
+#h-chg{font-size:13px;font-weight:600;margin-left:8px;align-self:flex-end;padding-bottom:2px}
+.psep{width:1px;height:28px;background:var(--rule);margin:0 12px}
+.pstat{display:flex;flex-direction:column}
+.plbl{font-size:7px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:1px}
+.pval{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600;color:var(--ink2)}
+#stale-tag{font-size:8px;font-weight:700;color:var(--put);letter-spacing:.1em;
+  display:none;margin-left:8px}
+@keyframes blink{50%{opacity:0}}
+#stale-tag.on{display:inline;animation:blink 1s step-start infinite}
+.pright{margin-left:auto;display:flex;align-items:center;gap:8px}
+.cfgbtn{background:none;border:1px solid var(--rule2);color:var(--ink3);
+  font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;
+  padding:3px 9px;border-radius:2px;cursor:pointer;letter-spacing:.08em}
+.cfgbtn:hover{border-color:var(--ink2);color:var(--ink)}
+
+/* ══ GAUGE ROW 1 — COMP + DSC + SIGNAL ═══════════════════════ */
+#grow1{flex-shrink:0;display:flex;align-items:stretch;
+  background:var(--white);border-bottom:1.5px solid var(--rule2);padding:5px 8px;gap:0}
+.gcell{display:flex;flex-direction:column;align-items:center;
+  padding:0 8px;border-right:1px solid var(--rule);flex:1.3}
+.gcell:last-child{border-right:none;flex:1}
+.g-title{font-size:7px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:1px;text-align:center}
+.g-svg{width:100%;max-width:190px}
+.g-readout{display:flex;flex-direction:column;align-items:center;margin-top:-4px}
+.g-val{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;
+  line-height:1;text-align:center;transition:color .3s}
+.g-val.call{color:var(--call)} .g-val.put{color:var(--put)}
+.g-val.amber{color:var(--amber)} .g-val.dim{color:var(--ink3)}
+.g-desc{font-size:7.5px;color:var(--ink3);text-align:center;margin-top:1px}
+.g-badge{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;
+  padding:1px 7px;border-radius:2px;letter-spacing:.06em;margin-top:2px}
+.g-badge.fail{background:var(--put-bg);color:var(--put)}
+.g-badge.strain{background:var(--amber-bg);color:var(--amber)}
+.g-badge.build{background:var(--paper);color:var(--ink3);border:1px solid var(--rule)}
+.g-badge.expand{background:var(--amber-bg);color:var(--amber)}
+
+/* Signal panel */
+#sig-panel{display:flex;flex-direction:column;justify-content:center;
+  padding:5px 12px;border-left:1.5px solid var(--rule2);flex-shrink:0;min-width:210px}
+.sig-eyebrow{font-size:7px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:2px}
+#sig-state{font-family:'IBM Plex Sans',sans-serif;font-size:27px;font-weight:700;
+  line-height:1;letter-spacing:-.02em;color:var(--ink3);transition:color .3s}
+.sig-ingredients{display:flex;align-items:center;gap:4px;margin-top:5px;flex-wrap:wrap}
+.sig-tag{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;
+  padding:2px 6px;border-radius:2px;letter-spacing:.04em;white-space:nowrap}
+.sig-tag.call{background:var(--call-bg);color:var(--call);border:1px solid var(--call-lt)}
+.sig-tag.put{background:var(--put-bg);color:var(--put);border:1px solid var(--put-lt)}
+.sig-tag.miss{background:var(--paper);color:var(--ink3);border:1px solid var(--rule)}
+.sig-tag.block{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-lt)}
+#sig-context{font-size:8px;color:var(--ink3);margin-top:4px}
+#sig-context strong{color:var(--ink2);font-weight:600}
+.sig-status-row{display:flex;align-items:center;gap:6px;margin-top:5px;
+  padding-top:5px;border-top:1px solid var(--rule)}
+.sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--ink4)}
+.sdot.g{background:#3DA864} .sdot.r{background:#D44444}
+.sstat-lbl{font-size:7.5px;color:var(--ink3)}
+.push-sm{font-size:7px;font-weight:700;padding:1px 5px;border-radius:2px;
+  letter-spacing:.05em;margin-left:auto}
+.push-sm.on{color:var(--call);background:var(--call-bg);border:1px solid var(--call-lt)}
+.push-sm.off{color:var(--ink3);background:var(--paper);border:1px solid var(--rule)}
+
+/* ══ GAUGE ROW 2 — G1, F1, WX, COSMIC ════════════════════════ */
+#grow2{flex-shrink:0;display:flex;align-items:stretch;
+  background:var(--paper);border-bottom:1.5px solid var(--rule2)}
+.g2cell{display:flex;flex-direction:column;align-items:center;
+  padding:3px 6px;border-right:1px solid var(--rule);flex:1}
+.g2-title{font-size:7px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:0;text-align:center}
+.g2-svg{width:100%;max-width:150px}
+.g2-readout{display:flex;flex-direction:column;align-items:center;margin-top:-6px}
+.g2-val{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;
+  line-height:1;text-align:center;transition:color .3s}
+.g2-val.call{color:var(--call)} .g2-val.put{color:var(--put)} .g2-val.dim{color:var(--ink4)}
+.g2-desc{font-size:7px;color:var(--ink3);text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px}
+
+/* COSMIC cell */
+#cosmic-cell{background:var(--gold-bg);border-left:1.5px solid var(--rule2);
+  min-width:110px;flex:0.8;cursor:pointer}
+.cosmic-lbl{font-size:7px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--gold);margin-bottom:0}
+#cosmic-inactive{display:flex;flex-direction:column;align-items:center;
+  justify-content:center;flex:1;gap:3px;padding:4px 0}
+.c-icon-dim{font-size:26px;opacity:.18;line-height:1}
+.c-watching{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--ink4);letter-spacing:.06em}
+.vote-wrap{margin-top:4px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.vote-title{font-size:6.5px;color:var(--ink4);text-align:center;letter-spacing:.08em;text-transform:uppercase}
+#vote-bar{display:flex;gap:2px}
+.cv{width:9px;height:9px;border-radius:1px;background:var(--rule);transition:background .3s}
+.cv.on{background:var(--gold-mid)}
+.cv.on.put{background:var(--put-mid)} .cv.on.call{background:var(--call-mid)}
+#cosmic-need{font-family:'IBM Plex Mono',monospace;font-size:7px;color:var(--ink4);
+  text-align:center;letter-spacing:.04em}
+@keyframes cosmicPulse{0%,100%{box-shadow:0 0 0 0 rgba(200,160,32,.4)}50%{box-shadow:0 0 0 6px rgba(200,160,32,0)}}
+#cosmic-active{display:none;flex-direction:column;align-items:center;
+  justify-content:center;flex:1;gap:2px;padding:3px 0}
+.cosmic-fire{border-radius:4px;padding:4px 8px;text-align:center;
+  background:linear-gradient(135deg,#FEF9EC,#F8EEC0);
+  border:1.5px solid var(--gold-mid);
+  animation:cosmicPulse 1.8s ease-in-out infinite}
+.cf-icon{font-size:18px;line-height:1}
+.cf-dir{font-family:'IBM Plex Sans',sans-serif;font-size:13px;font-weight:700;
+  color:var(--gold);line-height:1.1}
+.cf-dir.put{color:var(--put)} .cf-dir.call{color:var(--call)}
+.cf-votes{font-family:'IBM Plex Mono',monospace;font-size:7.5px;
+  color:var(--gold-mid);letter-spacing:.04em;margin-top:1px}
+#cf-target{font-family:'IBM Plex Mono',monospace;font-size:7px;
+  color:var(--gold-mid);margin-top:2px;letter-spacing:.06em}
+
+/* ══ ENV STRIP ════════════════════════════════════════════════ */
+#env{flex-shrink:0;display:flex;height:34px;background:var(--white);
+  border-bottom:1px solid var(--rule)}
+.ec{flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;border-right:1px solid var(--rule);padding:2px 4px;
+  transition:background .3s}
+.ec:last-child{border-right:none}
+.ec-lbl{font-size:7px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink3);margin-bottom:1px}
+.ec-val{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;
+  white-space:nowrap;transition:color .3s}
+.ec-val.call{color:var(--call)} .ec-val.put{color:var(--put)}
+.ec-val.amber{color:var(--amber)} .ec-val.stable{color:var(--ink3)} .ec-val.dim{color:var(--ink4)}
+.ec.tput{background:var(--put-bg)} .ec.tcall{background:var(--call-bg)}
+.ec.tambr{background:var(--amber-bg)}
+
+/* ══ TOOLBAR ══════════════════════════════════════════════════ */
+#toolbar{flex-shrink:0;display:flex;align-items:center;gap:4px;height:26px;
+  padding:0 10px;background:var(--paper);border-bottom:1px solid var(--rule)}
+.tf{background:none;border:1px solid var(--rule2);color:var(--ink3);
+  font-family:'IBM Plex Mono',monospace;font-size:7.5px;padding:1px 6px;
+  border-radius:2px;cursor:pointer;transition:all .15s}
+.tf.on{background:var(--ink);border-color:var(--ink);color:var(--white);font-weight:700}
+.zb{background:none;border:1px solid var(--rule2);color:var(--ink3);
+  font-size:10px;width:18px;height:18px;display:flex;align-items:center;
+  justify-content:center;border-radius:2px;cursor:pointer}
+.tsep{width:1px;height:10px;background:var(--rule);margin:0 2px}
+.tsp{flex:1}
+.leg{display:flex;align-items:center;gap:3px;font-size:7px;color:var(--ink3)}
+.ld{width:12px;height:2px;border-radius:1px}
+.ld.dsh{background:repeating-linear-gradient(90deg,var(--amber) 0,var(--amber) 3px,transparent 3px,transparent 6px)}
+.tbtn{background:none;border:1px solid var(--rule2);color:var(--ink3);
+  font-family:'IBM Plex Mono',monospace;font-size:7px;font-weight:700;
+  padding:2px 7px;border-radius:2px;cursor:pointer;letter-spacing:.07em}
+.tbtn.log{border-color:var(--amber);color:var(--amber)}
+.tbtn.log:hover{background:var(--amber-bg)}
+
+/* ══ CHART + GEX ══════════════════════════════════════════════ */
+#carea{flex:1;min-height:0;display:flex}
+#chart-wrap{flex:3;position:relative;overflow:hidden;background:var(--white);
+  border-right:1px solid var(--rule)}
+#chart{width:100%;height:100%}
+#gex-panel{flex:1;background:var(--paper);display:flex;flex-direction:column;overflow:hidden}
+#gex-canvas{display:block}
+.expbtn{position:absolute;top:5px;right:5px;z-index:10;
+  background:rgba(248,247,244,.92);border:1px solid var(--rule);
+  font-family:'IBM Plex Mono',monospace;font-size:7px;color:var(--ink3);
+  padding:2px 7px;border-radius:2px;cursor:pointer;letter-spacing:.05em;
+  backdrop-filter:blur(4px)}
+.expbtn:hover{border-color:var(--ink2);color:var(--ink)}
+
+/* Fullscreen signal bar (hidden normally) */
+#fs-bar{display:none;position:absolute;top:0;left:0;right:0;z-index:10;
+  height:36px;align-items:center;gap:8px;padding:0 12px;
+  background:rgba(248,247,244,.96);border-bottom:1.5px solid var(--rule2);
+  backdrop-filter:blur(6px)}
+#fs-ctx{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--ink3)}
+.fscl{background:none;border:1px solid var(--rule2);color:var(--ink3);
+  font-family:'IBM Plex Mono',monospace;font-size:7.5px;font-weight:600;
+  padding:3px 9px;border-radius:2px;cursor:pointer;letter-spacing:.07em;margin-left:auto}
+
+/* ══ LOG DRAWER ════════════════════════════════════════════════ */
+#log-drawer{position:fixed;bottom:0;left:0;right:0;height:230px;
+  background:var(--white);border-top:2px solid var(--rule2);
+  transform:translateY(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);
+  z-index:200;display:flex;flex-direction:column}
+#log-drawer.open{transform:translateY(0)}
+#log-hdr{display:flex;align-items:center;gap:8px;padding:4px 12px;
+  background:var(--paper);border-bottom:1px solid var(--rule);flex-shrink:0}
+.log-title{font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:700;
+  color:var(--ink2);letter-spacing:.1em;text-transform:uppercase}
+#log-meta{font-size:8px;color:var(--ink3)}
+.log-sp{flex:1}
+.log-btn{background:none;border:1px solid var(--rule2);color:var(--ink3);
+  font-family:'IBM Plex Mono',monospace;font-size:7.5px;font-weight:600;
+  padding:2px 7px;border-radius:2px;cursor:pointer}
+.log-btn:hover{border-color:var(--ink2);color:var(--ink)}
+.log-btn.danger:hover{border-color:var(--put);color:var(--put)}
+#log-scroll{overflow:auto;flex:1}
+#log-tbl{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;
+  font-size:8px;white-space:nowrap}
+#log-tbl th{font-size:6.5px;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;
+  padding:2px 6px;border-bottom:1px solid var(--rule);text-align:right;
+  position:sticky;top:0;background:var(--paper)}
+#log-tbl th:first-child,#log-tbl th:nth-child(2){text-align:left}
+#log-tbl td{padding:2px 6px;border-bottom:1px solid var(--rule);text-align:right;color:var(--ink3)}
+#log-tbl td:first-child,#log-tbl td:nth-child(2){text-align:left}
+#log-tbl tr:hover td{background:var(--paper)}
+
+/* ══ CONFIG MODAL ═════════════════════════════════════════════ */
+#overlay{position:fixed;inset:0;background:rgba(240,238,233,.88);
+  display:none;align-items:center;justify-content:center;z-index:300;
+  backdrop-filter:blur(4px)}
+#overlay.open{display:flex}
+.modal{background:var(--white);border:1.5px solid var(--rule2);
+  border-radius:4px;padding:22px;width:460px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.mhdr{font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;
+  color:var(--ink);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px}
+.msec{font-size:7px;color:var(--ink3);text-transform:uppercase;letter-spacing:.12em;
+  margin:12px 0 7px;padding-bottom:4px;border-bottom:1px solid var(--rule)}
+.mf{margin-bottom:9px}
+.mf label{display:block;font-size:8px;color:var(--ink3);margin-bottom:3px;
+  text-transform:uppercase;letter-spacing:.08em}
+.mf input{width:100%;background:var(--paper);border:1px solid var(--rule2);
+  color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:10px;
+  padding:7px 8px;border-radius:3px;outline:none}
+.mf input:focus{border-color:var(--amber)}
+.mfoot{display:flex;gap:8px;justify-content:flex-end;padding-top:12px;
+  border-top:1px solid var(--rule);margin-top:14px}
+.btn{padding:7px 16px;font-family:'IBM Plex Mono',monospace;font-size:9px;
+  border-radius:3px;cursor:pointer;border:none;letter-spacing:.06em}
+.btnp{background:var(--amber);color:#fff;font-weight:700}
+.btnp:hover{background:var(--amber-mid)}
+.btns{background:transparent;color:var(--ink3);border:1px solid var(--rule2)}
+
+/* ══ SPLASH ═══════════════════════════════════════════════════ */
+#splash{position:fixed;inset:0;background:var(--white);display:none;
+  align-items:center;justify-content:center;z-index:400;
+  flex-direction:column;gap:14px}
+#splash.open{display:flex}
+.slogo{font-family:'IBM Plex Sans',sans-serif;font-size:22px;font-weight:700;
+  color:var(--amber);letter-spacing:.06em}
+.ssub{font-size:9px;color:var(--ink3)}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- PRICE BAR -->
+  <div id="pbar">
+    <div id="h-price">---</div>
+    <div id="h-chg" style="color:var(--ink3)"></div>
+    <div class="psep"></div>
+    <div class="pstat">
+      <div class="plbl">VWAP</div>
+      <div class="pval" id="h-vwap">---</div>
+    </div>
+    <div class="psep"></div>
+    <div class="pstat">
+      <div class="plbl">VIX</div>
+      <div class="pval" id="h-vix" style="color:var(--ink3)">---</div>
+    </div>
+    <span id="stale-tag">&#9888; STALE</span>
+    <div class="pright">
+      <button class="cfgbtn" onclick="openModal()">&#9881; CONFIG</button>
+    </div>
+  </div>
+
+  <!-- GAUGE ROW 1: COMP + DSC + Signal Panel -->
+  <div id="grow1">
+
+    <div class="gcell">
+      <div class="g-title">COMPOSITE</div>
+      <svg class="g-svg" id="svg-comp" viewBox="0 0 180 100"></svg>
+      <div class="g-readout">
+        <div class="g-val dim" id="v-comp">0.0</div>
+        <div class="g-desc">G1 &middot; F1 &middot; WX</div>
+      </div>
+    </div>
+
+    <div class="gcell">
+      <div class="g-title">DEALER STRESS</div>
+      <svg class="g-svg" id="svg-dsc" viewBox="0 0 180 100"></svg>
+      <div class="g-readout">
+        <div class="g-val dim" id="v-dsc">0.00</div>
+        <span class="g-badge build" id="b-dsc">BUILD</span>
+      </div>
+    </div>
+
+    <!-- Signal + compact status -->
+    <div id="sig-panel">
+      <div class="sig-eyebrow">SIGNAL</div>
+      <div id="sig-state">NEUTRAL</div>
+      <div class="sig-ingredients">
+        <span class="sig-tag miss" id="sig-tag-g1">G1 &mdash;</span>
+        <span class="sig-tag miss" id="sig-tag-f1">F1 &mdash;</span>
+        <span class="sig-tag miss" id="sig-tag-wx">WX &mdash;</span>
+      </div>
+      <div id="sig-context">Awaiting data</div>
+      <div class="sig-status-row">
+        <span class="sdot r" id="ds-uw" title="Unusual Whales"></span>
+        <span class="sdot r" id="ds-tr" title="Tradier"></span>
+        <span class="sdot r" id="ds-bars" title="Bars"></span>
+        <span class="sstat-lbl">DATA</span>
+        <span class="push-sm off" id="push-lbl">PUSH OFF</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- GAUGE ROW 2: G1, F1, WX, COSMIC -->
+  <div id="grow2">
+
+    <div class="g2cell">
+      <div class="g2-title">G1 &middot; STRUCTURE</div>
+      <svg class="g2-svg" id="svg-g1" viewBox="0 0 140 80"></svg>
+      <div class="g2-readout">
+        <div class="g2-val dim" id="v-g1">--</div>
+        <div class="g2-desc" id="d-g1">--</div>
+      </div>
+    </div>
+
+    <div class="g2cell">
+      <div class="g2-title">F1 &middot; FLOW</div>
+      <svg class="g2-svg" id="svg-f1" viewBox="0 0 140 80"></svg>
+      <div class="g2-readout">
+        <div class="g2-val dim" id="v-f1">--</div>
+        <div class="g2-desc" id="d-f1">WATCHING</div>
+      </div>
+    </div>
+
+    <div class="g2cell">
+      <div class="g2-title">WX &middot; PRICE ACTION</div>
+      <svg class="g2-svg" id="svg-wx" viewBox="0 0 140 80"></svg>
+      <div class="g2-readout">
+        <div class="g2-val dim" id="v-wx">--</div>
+        <div class="g2-desc" id="d-wx">--</div>
+      </div>
+    </div>
+
+    <!-- COSMIC -->
+    <div class="g2cell" id="cosmic-cell">
+      <div class="g2-title cosmic-lbl">&#9732; COSMIC</div>
+      <div id="cosmic-inactive">
+        <div class="c-icon-dim">&#9732;</div>
+        <div class="c-watching">WATCHING</div>
+        <div class="vote-wrap">
+          <div class="vote-title">VOTES</div>
+          <div id="vote-bar">
+            <div class="cv"></div><div class="cv"></div><div class="cv"></div>
+            <div class="cv"></div><div class="cv"></div><div class="cv"></div>
+            <div class="cv"></div>
+          </div>
+          <div id="cosmic-need">0 / 7 &middot; NEED 4</div>
+        </div>
+      </div>
+      <div id="cosmic-active">
+        <div class="cosmic-fire">
+          <div class="cf-icon">&#9732;</div>
+          <div class="cf-dir" id="cf-dir">--</div>
+          <div class="cf-votes" id="cf-votes">--</div>
+        </div>
+        <div id="cf-target"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ENVIRONMENT STRIP -->
+  <div id="env">
+    <div class="ec" id="env-drift">
+      <div class="ec-lbl">DRIFT</div>
+      <div class="ec-val dim">&#x2014;</div>
+    </div>
+    <div class="ec" id="env-hec">
+      <div class="ec-lbl">HEC</div>
+      <div class="ec-val stable">STABLE</div>
+    </div>
+    <div class="ec" id="env-gia">
+      <div class="ec-lbl">GIA</div>
+      <div class="ec-val dim">&#x2014;</div>
+    </div>
+    <div class="ec" id="env-gx">
+      <div class="ec-lbl">GX</div>
+      <div class="ec-val dim">&#x2014;</div>
+    </div>
+    <div class="ec" id="env-absorp">
+      <div class="ec-lbl">ABSORP</div>
+      <div class="ec-val dim">&#x2014;</div>
+    </div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div id="toolbar">
+    <button class="tf on" onclick="setTf(1)">1M</button>
+    <button class="tf" onclick="setTf(5)">5M</button>
+    <button class="tf" onclick="setTf(15)">15M</button>
+    <button class="tf" onclick="setTf(30)">30M</button>
+    <div class="tsep"></div>
+    <button class="zb" onclick="zoom(1)">+</button>
+    <button class="zb" onclick="zoom(-1)">&minus;</button>
+    <div class="tsep"></div>
+    <div class="leg"><div class="ld" style="background:var(--amber)"></div>EMA8</div>
+    <div class="leg"><div class="ld" style="background:#3A6EA5"></div>EMA21</div>
+    <div class="leg"><div class="ld" style="background:var(--ink4)"></div>VWAP</div>
+    <div class="leg"><div class="ld" style="background:var(--call)"></div><span id="leg-cwall">CWall</span></div>
+    <div class="leg"><div class="ld" style="background:var(--put)"></div><span id="leg-pwall">PWall</span></div>
+    <div class="leg"><div class="ld dsh"></div>ORB</div>
+    <div class="tsp"></div>
+    <button class="tbtn log" onclick="toggleLog()">LOG &#8593;</button>
+    <button class="cfgbtn" onclick="openModal()">&#9881; CONFIG</button>
+  </div>
+
+  <!-- CHART + GEX (flex:3 + flex:1 = 75/25) -->
+  <div id="carea">
+    <div id="chart-wrap">
+      <div id="chart"></div>
+      <!-- Fullscreen context bar (hidden normally) -->
+      <div id="fs-bar">
+        <span id="fs-ctx" style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--ink3)"></span>
+        <button class="fscl" onclick="closeFullscreen()">&#10556; COLLAPSE</button>
+      </div>
+      <button class="expbtn" onclick="openFullscreen()">&#10530; EXPAND</button>
+    </div>
+    <div id="gex-panel">
+      <canvas id="gex-canvas"></canvas>
+    </div>
+  </div>
+
+</div><!-- end #app -->
+
+<!-- LOG DRAWER -->
+<div id="log-drawer">
+  <div id="log-hdr">
+    <span class="log-title">UNIFIED LOG</span>
+    <span id="log-meta">&#x2014;</span>
+    <span class="log-sp"></span>
+    <button class="log-btn" id="log-copy-btn" onclick="copyUnifiedLog()">&#8659; COPY TSV</button>
+    <button class="log-btn danger" onclick="clearUnifiedLog()">CLEAR</button>
+    <button class="log-btn" onclick="toggleLog()">&#8595; CLOSE</button>
+  </div>
+  <div id="log-scroll">
+    <table id="log-tbl">
+      <thead><tr>
+        <th>TIME</th><th>SIG</th><th>COMP</th>
+        <th>G1</th><th>F1</th><th>DTE</th><th>WX</th>
+        <th>DRIFT</th><th>HEC</th><th>GIA</th><th>DSC</th>
+        <th>ABSORP</th><th>GX</th>
+        <th>PRICE</th><th>VIX</th>
+        <th>+2m</th><th>+5m</th><th>+10m</th><th>+15m</th>
+      </tr></thead>
+      <tbody id="log-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- CONFIG MODAL -->
+<div id="overlay" onclick="bgClick(event)">
+  <div class="modal">
+    <div class="mhdr">SPY SNIPER CONFIG</div>
+    <div class="msec">Proxy</div>
+    <div class="mf">
+      <label>Worker URL</label>
+      <input id="c-proxy" type="url" placeholder="https://your-worker.workers.dev"/>
+    </div>
+    <div class="msec">Alerts</div>
+    <div class="mf">
+      <label>Pushover Token</label>
+      <input id="c-pt" type="text" placeholder="App token"/>
+    </div>
+    <div class="mf">
+      <label>Pushover User</label>
+      <input id="c-pu" type="text" placeholder="User key"/>
+    </div>
+    <div class="mfoot">
+      <button class="btn btns" onclick="closeModal()">CANCEL</button>
+      <button class="btn btnp" onclick="saveAndApply()">SAVE &amp; CONNECT</button>
+    </div>
+  </div>
+</div>
+
+<!-- SPLASH -->
+<div id="splash" class="open">
+  <div class="slogo">SPY SNIPER v2</div>
+  <div class="ssub">Configure proxy URL to connect</div>
+  <button class="btn btnp" onclick="openModal()" style="margin-top:8px">&#9881; CONFIG</button>
+</div>
+
+<script type="module">
+  import { initChart }                    from './render/chart.js';
+  import { refreshPushUI }                from './render/header.js';
+  import { startPolling, loadStateFromKV } from './core/updateUI.js';
+  import { toggleLog, openFullscreen, closeFullscreen } from './render/log.js';
+
+  // Expose onclick handlers that aren't already on window via updateUI.js
+  window.toggleLog       = toggleLog;
+  window.openFullscreen  = openFullscreen;
+  window.closeFullscreen = closeFullscreen;
+
+  const CFG_KEY = 'spy_sniper_v4';
+  let cfg = { proxyUrl:'', pushoverToken:'', pushoverUser:'' };
+  try { Object.assign(cfg, JSON.parse(localStorage.getItem(CFG_KEY)||'{}')); } catch(e){}
+
+  initChart();
+  refreshPushUI();
+
+  if (cfg.proxyUrl) {
+    document.getElementById('splash').classList.remove('open');
+    loadStateFromKV().then(() => startPolling());
+  } else {
+    document.getElementById('splash').classList.add('open');
+  }
+</script>
+</body>
+</html>
