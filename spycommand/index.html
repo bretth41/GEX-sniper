@@ -1,0 +1,3071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPYCOMMAND</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:     #0e0f0d;
+  --paper:  #13140f;
+  --panel:  #181a14;
+  --border: #2a2d22;
+  --ink:    #e8e4d8;
+  --ink2:   #b4b09e;
+  --ink3:   #787468;
+  --bull:   #4ade80;
+  --bull2:  #22c55e;
+  --bear:   #f87171;
+  --bear2:  #ef4444;
+  --drift:  #fbbf24;
+  --dim:    #4a4d3e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; min-height: 100vh; padding: 16px;
+}
+h1 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: .20em; text-transform: uppercase;
+  color: var(--ink3); margin-bottom: 16px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px; margin-bottom: 10px;
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px; padding: 12px;
+}
+.panel-title {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink3); margin-bottom: 8px;
+  border-bottom: 1px solid var(--border); padding-bottom: 6px;
+}
+.ship-score {
+  font-size: 48px; font-weight: 700;
+  line-height: 1; letter-spacing: -.02em; transition: color .4s;
+}
+.ship-score.bull  { color: var(--bull);  }
+.ship-score.bear  { color: var(--bear);  }
+.ship-score.position { color: var(--drift); }
+.ship-state { font-size: 11px; font-weight: 700; letter-spacing: .14em; margin-top: 4px; }
+.ship-conf  { font-size: 10px; color: var(--ink3); margin-top: 2px; }
+.anchor-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.anchor-label { font-size: 9px; color: var(--ink3); width: 64px; flex-shrink: 0; }
+.bar-wrap {
+  flex: 1; height: 6px; background: var(--border);
+  border-radius: 3px; position: relative; overflow: hidden;
+}
+.bar-fill {
+  position: absolute; top: 0; height: 100%;
+  border-radius: 3px; transition: width .4s, background .4s;
+}
+.anchor-val { font-size: 9px; color: var(--ink2); width: 36px; text-align: right; flex-shrink: 0; }
+.lake-row {
+  display: flex; justify-content: space-between;
+  padding: 3px 0; border-bottom: 1px solid var(--border); font-size: 10px;
+}
+.lake-row:last-child { border-bottom: none; }
+.lake-key { color: var(--ink3); }
+.lake-val { color: var(--ink2); font-weight: 600; }
+.ok   { color: var(--bull2); }
+.err  { color: var(--bear2); }
+.warn { color: var(--drift); }
+.diag-row {
+  display: flex; justify-content: space-between;
+  padding: 2px 0; font-size: 10px; border-bottom: 1px solid var(--border);
+}
+.diag-row:last-child { border-bottom: none; }
+.diag-key { color: var(--ink3); }
+.diag-val { color: var(--ink2); }
+#log-panel { grid-column: 1 / -1; max-height: 180px; overflow-y: auto; }
+.log-entry { font-size: 9px; color: var(--ink3); padding: 2px 0; border-bottom: 1px solid var(--border); }
+.log-entry .ts  { color: var(--dim); margin-right: 6px; }
+.log-entry .ok  { color: var(--bull2); }
+.log-entry .err { color: var(--bear2); }
+.log-entry .warn { color: var(--drift); }
+.pulse { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+.pulse.on  { background: var(--bull2); animation: blink 1s step-end infinite; }
+.pulse.off { background: var(--bear2); }
+@keyframes blink { 50% { opacity: 0.2; } }
+canvas#miniChart { width: 100%; height: 80px; display: block; margin-top: 8px; }
+/* ── SPYCOMMAND ── */
+#cmd-panel { grid-column: 1 / -1; display: flex; gap: 16px; align-items: flex-start; min-height: 180px; }
+.cmd-col { display: flex; flex-direction: column; gap: 8px; }
+.cmd-col-gauge { flex: 0 0 240px; }
+.cmd-col-nav   { flex: 0 0 180px; align-items: center; }
+.cmd-col-adv   { flex: 1; }
+.cmd-label { font-size: 9px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); margin-bottom: 4px; }
+canvas#cmdGauge { width: 100%; height: 130px; display: block; }
+.cmd-speed-state { font-size: 22px; font-weight: 700; letter-spacing: .08em; text-align: center; transition: color .4s; }
+.cmd-speed-state.stop   { color: var(--bear2); }
+.cmd-speed-state.idle   { color: var(--drift); }
+.cmd-speed-state.thrust { color: var(--bull); }
+.cmd-speed-state.full   { color: var(--bull2); }
+.cmd-dir-circle { width: 100px; height: 100px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border); position: relative; margin: 0 auto; }
+.cmd-dir-half { position: absolute; width: 100%; height: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; letter-spacing: .10em; transition: background .4s, color .4s; }
+.cmd-dir-call { top: 0; border-bottom: 1px solid var(--border); }
+.cmd-dir-put  { bottom: 0; }
+.cmd-dir-call.active  { background: #22c55e33; color: var(--bull2); }
+.cmd-dir-call.inactive{ background: var(--border); color: var(--ink3); }
+.cmd-dir-put.active   { background: #ef444433; color: var(--bear2); }
+.cmd-dir-put.inactive { background: var(--border); color: var(--ink3); }
+.cmd-bullseye { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; margin: 0 auto; border: 3px solid var(--border); box-shadow: 0 0 0 8px var(--panel), 0 0 0 14px var(--border), 0 0 0 22px var(--panel), 0 0 0 28px var(--border); transition: border-color .4s; }
+.cmd-bullseye.call { border-color: var(--bull2); box-shadow: 0 0 0 8px var(--panel), 0 0 0 14px var(--bull)55, 0 0 0 22px var(--panel), 0 0 0 28px var(--bull)22; }
+.cmd-bullseye.put  { border-color: var(--bear2); box-shadow: 0 0 0 8px var(--panel), 0 0 0 14px var(--bear)55, 0 0 0 22px var(--panel), 0 0 0 28px var(--bear)22; }
+.cmd-dest-price { font-size: 14px; font-weight: 700; text-align: center; letter-spacing: .02em; }
+.cmd-dest-type  { font-size: 8px; color: var(--ink3); text-align: center; margin-top: 2px; }
+.cmd-advisory { font-size: 9px; padding: 3px 0; border-bottom: 1px solid var(--border); display: flex; gap: 6px; }
+.cmd-advisory:last-child { border-bottom: none; }
+.adv-stop   { color: var(--bear2); }
+.adv-caution{ color: var(--drift); }
+.adv-info   { color: var(--ink3); }
+.adv-icon   { flex-shrink: 0; font-weight: 700; width: 12px; }
+.cmd-composite { font-size: 9px; color: var(--ink3); margin-top: 4px; }
+button {
+  background: var(--border); border: none; color: var(--ink2);
+  padding: 5px 10px; border-radius: 3px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 9px; cursor: pointer; letter-spacing: .06em; margin-right: 6px;
+}
+</style>
+</head>
+<body>
+
+<h1>
+  <span class="pulse off" id="pulse"></span>
+  SPYCOMMAND
+</h1>
+
+<div class="grid">
+  <!-- ── Row 1: Main signals + Lake ─── -->
+  <div class="panel">
+    <div class="panel-title">SPYSHIP</div>
+    <div class="ship-score position" id="ship-score">—</div>
+    <div class="ship-state" id="ship-state">AWAITING DATA</div>
+    <div class="ship-conf"  id="ship-conf">conf —</div>
+    <div style="margin-top:10px">
+      <div class="anchor-row">
+        <span class="anchor-label">Heading</span>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-heading"></div></div>
+        <span class="anchor-val" id="val-heading">—</span>
+      </div>
+      <div class="anchor-row">
+        <span class="anchor-label">Momentum</span>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-momentum"></div></div>
+        <span class="anchor-val" id="val-momentum">—</span>
+      </div>
+      <div class="anchor-row">
+        <span class="anchor-label">VPOC</span>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-vpoc"></div></div>
+        <span class="anchor-val" id="val-vpoc">—</span>
+      </div>
+    </div>
+    <div style="margin-top:8px;font-size:9px;color:var(--ink3)" id="ship-heading-label">—</div>
+    <div style="font-size:9px;color:var(--ink3)" id="ship-vpoc-label">—</div>
+  </div>
+
+  <!-- SPYGRAVITY main panel -->
+  <div class="panel">
+    <div class="panel-title">SPYGRAVITY</div>
+    <div class="ship-score position" id="grav-score">—</div>
+    <div class="ship-state" id="grav-state">AWAITING DATA</div>
+    <div class="ship-conf"  id="grav-conf">conf —</div>
+    <div style="margin-top:8px">
+      <div class="anchor-row">
+        <span class="anchor-label">Net Field</span>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-grav-field"></div></div>
+        <span class="anchor-val" id="val-grav-field">—</span>
+      </div>
+      <div class="anchor-row">
+        <span class="anchor-label">Rotation</span>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-grav-rot"></div></div>
+        <span class="anchor-val" id="val-grav-rot">—</span>
+      </div>
+    </div>
+    <div style="margin-top:6px;font-size:9px;color:var(--ink3)" id="grav-field-state">—</div>
+    <div style="font-size:9px;color:var(--ink3)" id="grav-0dte-state">—</div>
+    <div style="font-size:9px;color:var(--ink3)" id="grav-transition">—</div>
+    <div style="font-size:9px;color:var(--ink3)" id="grav-dominant">—</div>
+    <div style="margin-top:4px;font-size:9px;color:var(--ink3)" id="grav-dte-bar">—</div>
+  </div>
+
+  <!-- ── Row 1 slot 3: Data Lake (moved) ─── -->
+
+  <!-- ── Row 2: Diagnostics ─── -->
+  <div class="panel">
+    <div class="panel-title">SPYSHIP Diagnostics</div>
+    <div class="diag-row"><span class="diag-key">price</span>    <span class="diag-val" id="d-px">—</span></div>
+    <div class="diag-row"><span class="diag-key">ema8</span>     <span class="diag-val" id="d-e8">—</span></div>
+    <div class="diag-row"><span class="diag-key">ema21</span>    <span class="diag-val" id="d-e21">—</span></div>
+    <div class="diag-row"><span class="diag-key">vpoc</span>     <span class="diag-val" id="d-vpoc">—</span></div>
+    <div class="diag-row"><span class="diag-key">vpocGap</span>  <span class="diag-val" id="d-vpocGap">—</span></div>
+    <div class="diag-row"><span class="diag-key">vpocVel</span>  <span class="diag-val" id="d-vpocVel">—</span></div>
+    <div class="diag-row"><span class="diag-key">slope8</span>   <span class="diag-val" id="d-s8">—</span></div>
+    <div class="diag-row"><span class="diag-key">slope21</span>  <span class="diag-val" id="d-s21">—</span></div>
+    <div class="diag-row"><span class="diag-key">spreadChg</span><span class="diag-val" id="d-sc">—</span></div>
+    <div class="diag-row"><span class="diag-key">atr</span>      <span class="diag-val" id="d-atr">—</span></div>
+    <div class="diag-row"><span class="diag-key">between</span>  <span class="diag-val" id="d-between">—</span></div>
+    <div class="diag-row"><span class="diag-key">crossover</span><span class="diag-val" id="d-cross">—</span></div>
+    <canvas id="miniChart"></canvas>
+  </div>
+
+  <!-- SPYGRAVITY diagnostics — row 2 slot 2 -->
+  <div class="panel">
+    <div class="panel-title">SPYGRAVITY Diagnostics</div>
+    <div class="diag-row"><span class="diag-key">composite</span> <span class="diag-val" id="gd-comp">—</span></div>
+    <div class="diag-row"><span class="diag-key">fieldRot</span>  <span class="diag-val" id="gd-rot">—</span></div>
+    <div class="diag-row"><span class="diag-key">persist</span>   <span class="diag-val" id="gd-persist">—</span></div>
+    <div class="diag-row"><span class="diag-key">f0/1/2</span>    <span class="diag-val" id="gd-fte">—</span></div>
+    <div class="diag-row"><span class="diag-key">aboveDyn</span>  <span class="diag-val" id="gd-adyn">—</span></div>
+    <div class="diag-row"><span class="diag-key">belowDyn</span>  <span class="diag-val" id="gd-bdyn">—</span></div>
+    <div class="diag-row"><span class="diag-key">clusters</span>  <span class="diag-val" id="gd-cnt">—</span></div>
+    <div class="diag-row"><span class="diag-key">lagrange</span>  <span class="diag-val" id="gd-lagrange">—</span></div>
+    <div class="diag-row"><span class="diag-key">overlap</span>   <span class="diag-val" id="gd-overlap">—</span></div>
+    <div class="diag-row"><span class="diag-key">emerging</span>  <span class="diag-val" id="gd-emerging">—</span></div>
+    <div class="diag-row"><span class="diag-key">wall/vac</span>  <span class="diag-val" id="gd-flags">—</span></div>
+    <div style="margin-top:4px;font-size:8px;color:var(--ink3);border-top:1px solid var(--border);padding-top:3px" id="gd-lagrange-detail"></div>
+    <div style="margin-top:4px;font-size:9px;color:var(--ink3)">Clusters:</div>
+    <div id="gd-clusters" style="font-size:8px;color:var(--ink3);margin-top:2px;line-height:1.6"></div>
+  </div>
+
+  <!-- Data Lake — row 2 slot 3 -->
+  <div class="panel">
+    <div class="panel-title">Data Lake</div>
+    <div class="lake-row"><span class="lake-key">rows</span><span class="lake-val" id="lake-rows">0</span></div>
+    <div class="lake-row"><span class="lake-key">age</span> <span class="lake-val" id="lake-age">—</span></div>
+    <div class="lake-row"><span class="lake-key">bars OK</span><span class="lake-val" id="fs-bars">—</span></div>
+    <div class="lake-row"><span class="lake-key">pdh/pdl</span><span class="lake-val" id="fs-pdhl">—</span></div>
+    <div class="lake-row"><span class="lake-key">gamma</span>  <span class="lake-val" id="fs-gamma">—</span></div>
+    <div class="lake-row"><span class="lake-key">flow</span>   <span class="lake-val" id="fs-flow">—</span></div>
+    <div class="lake-row"><span class="lake-key">dealer</span> <span class="lake-val" id="fs-dealer">—</span></div>
+    <div class="lake-row"><span class="lake-key">dark</span>   <span class="lake-val" id="fs-dark">—</span></div>
+    <div class="lake-row"><span class="lake-key">oi</span>     <span class="lake-val" id="fs-oi">—</span></div>
+    <div class="lake-row"><span class="lake-key">stations</span><span class="lake-val" id="fs-stations">—</span></div>
+    <div style="margin-top:10px">
+      <button onclick="exportLake()">EXPORT LAKE</button>
+      <button onclick="clearLog()">CLEAR LOG</button>
+    </div>
+  </div>
+
+  <!-- ── Row 3: SPYSTATIONS ─── -->
+  <div class="panel">
+    <div class="panel-title">SPYSTATIONS</div>
+    <div class="ship-score position" id="sta-score">—</div>
+    <div class="ship-state" id="sta-state">AWAITING DATA</div>
+    <div class="ship-conf"  id="sta-conf">conf —</div>
+    <div style="margin-top:8px">
+      <div class="anchor-row">
+        <span class="anchor-label">Station</span>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-sta"></div></div>
+        <span class="anchor-val" id="val-sta">—</span>
+      </div>
+    </div>
+    <div style="margin-top:6px;font-size:9px;color:var(--ink3)" id="sta-nearest">—</div>
+    <div style="font-size:9px;color:var(--ink3)" id="sta-character">—</div>
+    <div style="font-size:9px;color:var(--ink3)" id="sta-flags">—</div>
+    <div style="margin-top:4px;font-size:8px;color:var(--ink3);line-height:1.6" id="sta-list"></div>
+  </div>
+
+  <!-- SPYSTATIONS diagnostics -->
+  <div class="panel">
+    <div class="panel-title">SPYSTATIONS Diagnostics</div>
+    <div class="diag-row"><span class="diag-key">orb H/L</span>   <span class="diag-val" id="sd-orb">—</span></div>
+    <div class="diag-row"><span class="diag-key">pdh/pdl</span>   <span class="diag-val" id="sd-pd">—</span></div>
+    <div class="diag-row"><span class="diag-key">sess H/L</span>  <span class="diag-val" id="sd-sess">—</span></div>
+    <div class="diag-row"><span class="diag-key">stations</span>  <span class="diag-val" id="sd-cnt">—</span></div>
+    <div class="diag-row"><span class="diag-key">active</span>    <span class="diag-val" id="sd-active">—</span></div>
+    <div class="diag-row"><span class="diag-key">r2s/s2r</span>   <span class="diag-val" id="sd-r2s">—</span></div>
+    <div class="diag-row"><span class="diag-key">snap zone</span> <span class="diag-val" id="sd-snap">—</span></div>
+    <div class="diag-row"><span class="diag-key">lagrange</span>  <span class="diag-val" id="sd-lagrange">—</span></div>
+    <div class="diag-row"><span class="diag-key">emerging</span>  <span class="diag-val" id="sd-emerging">—</span></div>
+  </div>
+
+  <!-- SPYFUEL main panel -->
+  <div class="panel">
+    <div class="panel-title">SPYFUEL</div>
+    <div class="ship-score position" id="fuel-score">—</div>
+    <div class="ship-state" id="fuel-state">AWAITING DATA</div>
+    <div class="ship-conf"  id="fuel-conf">conf —</div>
+    <div style="margin-top:8px">
+      <div class="anchor-row">
+        <span class="anchor-label">Coherent</span>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-fuel-coh"></div></div>
+        <span class="anchor-val" id="val-fuel-coh">—</span>
+      </div>
+      <div class="anchor-row">
+        <span class="anchor-label">NetPrem</span>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-fuel-prem"></div></div>
+        <span class="anchor-val" id="val-fuel-prem">—</span>
+      </div>
+      <div class="anchor-row">
+        <span class="anchor-label">Dealer</span>
+        <div class="bar-wrap"><div class="bar-fill" id="bar-fuel-dealer"></div></div>
+        <span class="anchor-val" id="val-fuel-dealer">—</span>
+      </div>
+    </div>
+    <div style="margin-top:6px;font-size:9px;color:var(--ink3)" id="fuel-ignition">—</div>
+    <div style="font-size:9px;color:var(--ink3)" id="fuel-type">—</div>
+    <div style="font-size:9px;color:var(--ink3)" id="fuel-top-sweep">—</div>
+    <div style="margin-top:4px;font-size:9px;color:var(--ink3)" id="fuel-flags">—</div>
+  </div>
+
+  <!-- SPYFUEL diagnostics -->
+  <div class="panel">
+    <div class="panel-title">SPYFUEL Diagnostics</div>
+    <div class="diag-row"><span class="diag-key">coherence</span> <span class="diag-val" id="fd-coh">—</span></div>
+    <div class="diag-row"><span class="diag-key">stack</span>     <span class="diag-val" id="fd-stack">—</span></div>
+    <div class="diag-row"><span class="diag-key">accel</span>     <span class="diag-val" id="fd-accel">—</span></div>
+    <div class="diag-row"><span class="diag-key">sizeEsc</span>   <span class="diag-val" id="fd-size">—</span></div>
+    <div class="diag-row"><span class="diag-key">moneyVec</span>  <span class="diag-val" id="fd-money">—</span></div>
+    <div class="diag-row"><span class="diag-key">urgency</span>   <span class="diag-val" id="fd-urgency">—</span></div>
+    <div class="diag-row"><span class="diag-key">sweeps</span>    <span class="diag-val" id="fd-sweeps">—</span></div>
+    <div class="diag-row"><span class="diag-key">netPrem</span>   <span class="diag-val" id="fd-prem">—</span></div>
+    <div class="diag-row"><span class="diag-key">lock</span>      <span class="diag-val" id="fd-lock">—</span></div>
+    <div class="diag-row"><span class="diag-key">0DTE/2+</span>   <span class="diag-val" id="fd-dte">—</span></div>
+  </div>
+
+  <!-- SPYCOMMAND — synthesis panel, spans full width -->
+  <div class="panel" id="cmd-panel">
+
+    <!-- Left: Speed gauge -->
+    <div class="cmd-col cmd-col-gauge">
+      <div class="cmd-label">Speed</div>
+      <canvas id="cmdGauge"></canvas>
+      <div class="cmd-speed-state idle" id="cmd-speed-label">IDLE</div>
+      <div class="cmd-composite" id="cmd-composite">—</div>
+    </div>
+
+    <!-- Center: Direction + Destination -->
+    <div class="cmd-col cmd-col-nav">
+      <div class="cmd-label" style="text-align:center">Direction</div>
+      <div class="cmd-dir-circle">
+        <div class="cmd-dir-half cmd-dir-call inactive" id="cmd-dir-call">CALL</div>
+        <div class="cmd-dir-half cmd-dir-put  inactive" id="cmd-dir-put">PUT</div>
+      </div>
+      <div class="cmd-label" style="text-align:center;margin-top:12px">Destination</div>
+      <div class="cmd-bullseye" id="cmd-bullseye">
+        <div>
+          <div class="cmd-dest-price" id="cmd-dest-price">$—</div>
+          <div class="cmd-dest-type"  id="cmd-dest-type">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Advisories -->
+    <div class="cmd-col cmd-col-adv">
+      <div class="cmd-label">Advisories</div>
+      <div id="cmd-advisories">
+        <div class="cmd-advisory adv-info"><span class="adv-icon">ℹ</span>Awaiting signal data...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="panel" id="log-panel">
+    <div class="panel-title">Event Log</div>
+    <div id="log-entries"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════
+const CFG = {
+  proxy:       'https://spy-edge-tradier-proxy.ddyq77hxwp.workers.dev',
+  symbol:      'SPY',
+  pollMs:      5000,
+  lakeMaxRows: 5000,
+  ema8Period:  8,
+  ema21Period: 21,
+  vpocTick:    0.25,
+  fetchTimeoutMs: 6000,   // manual timeout per fetch call
+  ship: {
+    bullThresh:  0.40,
+    bearThresh: -0.40,
+    confMin:     0.35,
+    smoother:    0.30,
+    betweenEmasConfCap:  0.40,
+    crossoverConfCap:    0.35,
+    crossoverBars:       5,
+    vpocRejectionThresh: 0.12,
+    headingWeight:       0.40,
+    momentumWeight:      0.35,
+    vpocWeight:          0.25,
+    vpocRejectionWeight: 0.50,
+  },
+  endpoints: {
+    bars:       '/tradier/v1/markets/timesales?symbol=SPY&interval=1min&session_filter=open',
+    pdhl:       '/tradier/v1/markets/history?symbol=SPY&interval=daily&start=',  // + YYYY-MM-DD appended at fetch time
+    quote:      '/tradier/v1/markets/quotes?symbols=SPY&greeks=false',
+    gexStrike:  '/uw/api/stock/SPY/spot-exposures/strike',
+    gexExpiry:  '/uw/api/stock/SPY/greek-exposure/expiry',
+    flow:       '/uw/api/option-trades/flow-alerts?ticker_symbol=SPY&limit=100',
+    netPrem:    '/uw/api/stock/SPY/net-prem-ticks',
+    // Stubbed — need Cloudflare Worker mapping
+    gexDTE:     '/uw/api/stock/SPY/spot-exposures/expiry-strike',  // per-strike per-expiry
+    gexStatic:  '/uw/api/stock/SPY/greek-exposure/strike-expiry',    // structural OI GEX
+    flowExpiry: '/uw/api/stock/SPY/flow-per-expiry',
+    nope:       '/uw/api/stock/SPY/nope',
+    marketTide: '/uw/api/market/market-tide',
+    darkpool:   '/uw/api/darkpool/SPY',
+    litflow:    '/uw/api/lit-flow/SPY',
+    oiExpiry:   '/uw/api/stock/SPY/oi-per-expiry',
+    oiStrike:   '/uw/api/stock/SPY/oi-per-strike',
+    stations:   '/uw/api/stock/SPY/stock-volume-price-levels',
+    maxPain:    '/uw/api/stock/SPY/max-pain',
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+//  DATA LAKE + TIERED FETCH LAYER
+//
+//  Fetch intervals by category:
+//    5s  — bars, quote      (SPYSHIP needs fresh price every cycle)
+//    30s — gamma, flow      (meaningful change every ~30s)
+//    60s — dealer, dark     (slower moving)
+//   120s — oi, stations     (barely changes intraday)
+//
+//  One lake row written every 5s with latest known values.
+//  Signals read from Lake — never fetch directly.
+//  Add a new category: add to INTERVALS, Cache, and one fetch fn.
+// ═══════════════════════════════════════════════════════════
+
+const INTERVALS = {
+  bars:     5_000,
+  pdhl:     86_400_000,  // once per day — PDH/PDL from prior session
+  gamma:    30_000,
+  flow:     30_000,
+  dealer:   60_000,
+  dark:     60_000,
+  oi:       120_000,
+  stations: 120_000,
+};
+
+// Cache: last fetched data + timestamp per category
+const Cache = {
+  bars:     { data: null, lastFetched: 0 },
+  pdhl:     { data: null, lastFetched: 0 },
+  gamma:    { data: null, lastFetched: 0 },
+  flow:     { data: null, lastFetched: 0 },
+  dealer:   { data: null, lastFetched: 0 },
+  dark:     { data: null, lastFetched: 0 },
+  oi:       { data: null, lastFetched: 0 },
+  stations: { data: null, lastFetched: 0 },
+};
+
+// FetchState: for display only — not used for logic
+const FetchState = {
+  bars:     { lastOk: false, barCount: 0, err: null },
+  pdhl:     { lastOk: false, err: null },
+  gamma:    { lastOk: false, err: null },
+  flow:     { lastOk: false, count: 0,   err: null },
+  dealer:   { lastOk: false, err: null },
+  dark:     { lastOk: false, err: null },
+  oi:       { lastOk: false, err: null },
+  stations: { lastOk: false, err: null },
+};
+
+const DataLake = [];
+
+const Lake = {
+  latest() { return DataLake[DataLake.length - 1] || null; },
+  last(n)  { return DataLake.slice(-n); },
+  since(ms){ const t = Date.now()-ms; return DataLake.filter(r=>r.ts>=t); },
+  count()  { return DataLake.length; },
+  age()    { const r=this.latest(); return r ? Date.now()-r.ts : Infinity; },
+  export() { return JSON.stringify(DataLake); },
+};
+
+// ── Fetch helpers ─────────────────────────────────────────────────
+
+function fetchWithTimeout(url, ms) {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { signal: controller.signal })
+    .then(r  => { clearTimeout(tid); return r; })
+    .catch(e => { clearTimeout(tid); throw e; });
+}
+
+async function safeFetch(path, category) {
+  try {
+    const r = await fetchWithTimeout(CFG.proxy + path, CFG.fetchTimeoutMs);
+    if (!r.ok) {
+      FetchState[category].err    = 'HTTP ' + r.status;
+      FetchState[category].lastOk = false;
+      return null;
+    }
+    const d = await r.json();
+    FetchState[category].lastOk = true;
+    FetchState[category].err    = null;
+    return d;
+  } catch(e) {
+    FetchState[category].err    = e.name === 'AbortError' ? 'timeout' : e.message.slice(0,30);
+    FetchState[category].lastOk = false;
+    return null;
+  }
+}
+
+// ── Category fetch functions ──────────────────────────────────────
+// Each returns the data object for its category.
+// Called only when the category interval has elapsed.
+
+async function fetchBars() {
+  const [barsRaw, quoteRaw] = await Promise.all([
+    safeFetch(CFG.endpoints.bars,  'bars'),
+    safeFetch(CFG.endpoints.quote, 'bars'),
+  ]);
+  let bars = null, quote = null;
+  if (barsRaw) {
+    const raw = barsRaw?.series?.data;
+    if (Array.isArray(raw) && raw.length > 0) {
+      bars = raw.map(b => ({
+        ts: new Date(b.time).getTime(),
+        o:  parseFloat(b.open)   || 0,
+        h:  parseFloat(b.high)   || 0,
+        l:  parseFloat(b.low)    || 0,
+        c:  parseFloat(b.close)  || 0,
+        v:  parseFloat(b.volume) || 0,
+      })).filter(b => b.c > 0);
+      FetchState.bars.barCount = bars.length;
+      FetchState.bars.lastOk   = true;
+    }
+  }
+  if (quoteRaw) {
+    const q = quoteRaw?.quotes?.quote;
+    if (q) quote = {
+      last:   parseFloat(q.last)   || 0,
+      bid:    parseFloat(q.bid)    || 0,
+      ask:    parseFloat(q.ask)    || 0,
+      volume: parseFloat(q.volume) || 0,
+    };
+  }
+  return { bars, quote };
+}
+
+async function fetchPDHL() {
+  // Fetch prior 2 daily bars to get PDH/PDL — fires once per day at boot
+  const { dateStr } = etNow ? etNow() : { dateStr: new Date().toISOString().slice(0,10) };
+  // Request last 5 trading days to ensure we get yesterday even after weekends
+  const startDate = new Date(dateStr);
+  startDate.setDate(startDate.getDate() - 7);
+  const startStr = startDate.toISOString().slice(0,10);
+  const d = await safeFetch(CFG.endpoints.pdhl + startStr, 'pdhl');
+  if (!d) return null;
+  // Tradier history: { history: { day: [...] } } — array of {date,open,high,low,close}
+  const days = d?.history?.day;
+  if (!Array.isArray(days) || days.length < 2) return null;
+  // Sort by date, get the most recent completed session (not today)
+  const sorted = [...days].sort((a,b) => a.date < b.date ? -1 : 1);
+  const prior = sorted[sorted.length - 1]; // most recent prior day
+  if (!prior) return null;
+  FetchState.pdhl.lastOk = true;
+  return {
+    pdh:  parseFloat(prior.high)  || 0,
+    pdl:  parseFloat(prior.low)   || 0,
+    pdc:  parseFloat(prior.close) || 0,
+    date: prior.date,
+  };
+}
+
+async function fetchGamma() {
+  // Four gamma feeds — two working now, two stubbed until Cloudflare Worker mapped
+  const [spot, expiry, dte, gexStatic] = await Promise.all([
+    safeFetch(CFG.endpoints.gexStrike,  'gamma'),  // ✓ working
+    safeFetch(CFG.endpoints.gexExpiry,  'gamma'),  // ✓ working — DTE composition
+    safeFetch(CFG.endpoints.gexDTE,     'gamma'),  // stub — per-strike per-expiry
+    safeFetch(CFG.endpoints.gexStatic,  'gamma'),  // stub — structural OI GEX
+  ]);
+  return {
+    spot:      spot?.data      || null,  // [{strike, call_gamma_oi, put_gamma_oi}]
+    expiry:    expiry?.data    || null,  // [{expiry, call_delta, put_delta}] — DTE breakdown
+    dte:       dte?.data       || null,  // [{strike, expiry, gamma}] — stub
+    gexStatic: gexStatic?.data || null,  // [{strike, expiry, gex}] — stub
+  };
+}
+
+async function fetchFlow() {
+  const [alerts, byExpiry] = await Promise.all([
+    safeFetch(CFG.endpoints.flow,       'flow'),
+    safeFetch(CFG.endpoints.flowExpiry, 'flow'),
+  ]);
+  const raw = alerts?.data || null;
+  if (raw) FetchState.flow.count = raw.length;
+
+  // Annotate rows at ingestion: DTE, ageMs, premium tier, qualifying flag
+  const nowMs    = Date.now();
+  const { dateStr: todayStr } = etNow ? etNow() : { dateStr: new Date().toISOString().slice(0,10) };
+
+  const annotated = (raw || []).map(row => {
+    const dte       = calcDTE ? calcDTE(row.expiry || '', todayStr) : 99;
+    const prem      = Math.abs(parseFloat(row.total_premium) || 0);
+    const ageMs     = nowMs - new Date(row.created_at || 0).getTime();
+    const hasSweep  = !!(row.has_sweep);
+    const qualifying = prem >= 50000 && (hasSweep || prem >= 200000) && dte <= 5;
+    const type      = String(row.type || '').toLowerCase();
+    const dir       = type === 'call' ? 1 : type === 'put' ? -1 : 0;
+    const strike    = parseFloat(row.strike) || 0;
+    const premTier  = prem >= 5000000 ? 1.00
+                    : prem >= 1000000 ? 0.85
+                    : prem >= 200000  ? 0.65
+                    : prem >= 50000   ? 0.35 : 0;
+    return { ...row, dte, ageMs, qualifying, dir, strike, prem, premTier };
+  }).filter(r => r.dir !== 0);
+
+  return {
+    alerts:    annotated,            // enriched rows
+    raw:       raw,                  // original
+    byExpiry:  byExpiry?.data || null,
+    fetchedAt: nowMs,
+  };
+}
+
+async function fetchDealer() {
+  const [netPrem, nope, tide] = await Promise.all([
+    safeFetch(CFG.endpoints.netPrem,    'dealer'),
+    safeFetch(CFG.endpoints.nope,       'dealer'),
+    safeFetch(CFG.endpoints.marketTide, 'dealer'),
+  ]);
+  return {
+    netPrem:    netPrem?.data || null,  // [{ts, net_call_premium, net_put_premium}]
+    nope:       nope?.data    || null,  // stub until Worker mapped
+    marketTide: tide?.data    || null,  // stub until Worker mapped
+  };
+}
+
+async function fetchDark() {
+  const [dark, lit] = await Promise.all([
+    safeFetch(CFG.endpoints.darkpool, 'dark'),
+    safeFetch(CFG.endpoints.litflow,  'dark'),
+  ]);
+  return {
+    dark: dark?.data || null,  // [{price, size, executed_at}] — stub
+    lit:  lit?.data  || null,  // stub
+  };
+}
+
+async function fetchOI() {
+  const [byExp, byStr] = await Promise.all([
+    safeFetch(CFG.endpoints.oiExpiry, 'oi'),
+    safeFetch(CFG.endpoints.oiStrike, 'oi'),
+  ]);
+  return {
+    byExpiry: byExp?.data || null,  // stub
+    byStrike: byStr?.data || null,  // stub
+  };
+}
+
+async function fetchStations() {
+  const [levels, pain] = await Promise.all([
+    safeFetch(CFG.endpoints.stations, 'stations'),
+    safeFetch(CFG.endpoints.maxPain,  'stations'),
+  ]);
+  return {
+    levels:  levels?.data || null,  // stub
+    maxPain: pain?.data   || null,  // stub
+  };
+}
+
+// ── Category dispatch ─────────────────────────────────────────────
+// Maps category name to its fetch function.
+// To add a new category: add to INTERVALS, Cache, FetchState,
+// write a fetchXxx() function, and add it here.
+const FETCH_FNS = {
+  bars:     fetchBars,
+  pdhl:     fetchPDHL,
+  gamma:    fetchGamma,
+  flow:     fetchFlow,
+  dealer:   fetchDealer,
+  dark:     fetchDark,
+  oi:       fetchOI,
+  stations: fetchStations,
+};
+
+// ── Master fetch cycle ────────────────────────────────────────────
+// Runs every 5s. Each category checks its own interval.
+// Fetches only what is due. Writes one complete lake row regardless.
+
+async function fetchCycle() {
+  const now = Date.now();
+
+  // Determine which categories are due for a refresh
+  const due = Object.keys(INTERVALS).filter(
+    cat => (now - Cache[cat].lastFetched) >= INTERVALS[cat]
+  );
+
+  // Fetch all due categories in parallel
+  await Promise.all(due.map(async cat => {
+    try {
+      const data = await FETCH_FNS[cat]();
+      Cache[cat].data        = data;
+      Cache[cat].lastFetched = now;
+    } catch(e) {
+      log('fetch err [' + cat + ']: ' + e.message, 'err');
+    }
+  }));
+
+  // Write one complete timestamped row using latest cached values
+  const row = {
+    ts:       now,
+    bars:     Cache.bars.data?.bars    || null,
+    pdhl:     Cache.pdhl.data            || null,
+    quote:    Cache.bars.data?.quote   || null,
+    gamma:    Cache.gamma.data         || null,
+    flow:     Cache.flow.data          || null,
+    dealer:   Cache.dealer.data        || null,
+    dark:     Cache.dark.data          || null,
+    oi:       Cache.oi.data            || null,
+    stations: Cache.stations.data      || null,
+  };
+
+  DataLake.push(row);
+  if (DataLake.length > CFG.lakeMaxRows) DataLake.shift();
+  return row;
+}
+
+// ── Polling orchestrator ──────────────────────────────────────────
+let _pollHandle = null;
+function startFetching(onUpdate) {
+  if (_pollHandle) return;
+  async function cycle() {
+    try {
+      const row = await fetchCycle();
+      if (typeof onUpdate === 'function') onUpdate(row);
+    } catch(e) {
+      log('cycle err: ' + e.message, 'err');
+    }
+  }
+  cycle(); // fire immediately
+  _pollHandle = setInterval(cycle, CFG.pollMs);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SPYSHIP
+// ═══════════════════════════════════════════════════════════
+
+function calcEMA(bars, period) {
+  if (!bars || bars.length < 2) return [];
+  const k = 2 / (period + 1);
+  let ema = bars[0].c;
+  return bars.map(b => { ema = b.c * k + ema * (1 - k); return ema; });
+}
+
+function calcATR(bars, period = 14) {
+  if (!bars || bars.length < period + 1) return null;
+  const r = bars.slice(-period - 1);
+  let sum = 0;
+  for (let i = 1; i < r.length; i++) {
+    sum += Math.max(
+      r[i].h - r[i].l,
+      Math.abs(r[i].h - r[i-1].c),
+      Math.abs(r[i].l - r[i-1].c)
+    );
+  }
+  return sum / period;
+}
+
+function calcVPOC(bars) {
+  if (!bars || bars.length < 5) return null;
+  const tick = CFG.vpocTick;
+  const vol = {};
+  for (const b of bars) {
+    if (b.v <= 0) continue;
+    const lo = Math.floor(b.l / tick) * tick;
+    const hi = Math.ceil(b.h  / tick) * tick;
+    const levels = [];
+    for (let p = lo; p <= hi; p = +(p + tick).toFixed(4)) levels.push(+(p.toFixed(4)));
+    const perLevel = b.v * 0.5 / Math.max(levels.length, 1);
+    const closeLevel = +(Math.round(b.c / tick) * tick).toFixed(4);
+    for (const p of levels) vol[p] = (vol[p] || 0) + perLevel;
+    vol[closeLevel] = (vol[closeLevel] || 0) + b.v * 0.5;
+  }
+  let best = 0, vpoc = 0;
+  for (const [p, v] of Object.entries(vol)) {
+    if (v > best) { best = v; vpoc = parseFloat(p); }
+  }
+  return vpoc > 0 ? vpoc : null;
+}
+
+const SS = {  // ShipState — persists between cycles
+  smoothScore: 0, smoothHeading: 0, smoothMomentum: 0, smoothVpoc: 0,
+  crossoverLeft: 0, prevE8AboveE21: null, vpocHist: [],
+};
+
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function smooth(prev, curr, a) { return prev + a * (curr - prev); }
+function vpocVelocity(atr) {
+  const h = SS.vpocHist;
+  if (h.length < 2) return 0;
+  const lb = Math.min(4, h.length - 1);
+  return clamp((h[h.length-1].val - h[h.length-1-lb].val) / (atr * lb), -1, 1);
+}
+
+function computeSPYSHIP(row) {
+  try {
+    const bars  = row?.bars;
+    const minBars = Math.max(CFG.ema21Period + 5, 30);
+    if (!bars || bars.length < minBars) return null;
+
+    const px   = row?.quote?.last || bars[bars.length - 1].c;
+    const atr  = calcATR(bars, 14);
+    if (!atr || atr < 0.005) return null;
+
+    const e8v  = calcEMA(bars, CFG.ema8Period);
+    const e21v = calcEMA(bars, CFG.ema21Period);
+    const n    = bars.length;
+    const e8   = e8v[n-1];
+    const e21  = e21v[n-1];
+
+    const SL8  = 5, SL21 = 10;
+    const e8p  = e8v[Math.max(0, n-1-SL8)];
+    const e21p = e21v[Math.max(0, n-1-SL21)];
+    const e8_5 = e8v[Math.max(0, n-6)];
+    const e21_5= e21v[Math.max(0, n-6)];
+
+    const vpoc = calcVPOC(bars);
+    if (!vpoc) return null;
+
+    SS.vpocHist.push({ ts: row.ts, val: vpoc });
+    if (SS.vpocHist.length > 30) SS.vpocHist.shift();
+    const vpocVel = vpocVelocity(atr);
+
+    // Crossover detection
+    const e8AboveE21 = e8 > e21;
+    if (SS.prevE8AboveE21 !== null && SS.prevE8AboveE21 !== e8AboveE21)
+      SS.crossoverLeft = CFG.ship.crossoverBars;
+    SS.prevE8AboveE21 = e8AboveE21;
+    if (SS.crossoverLeft > 0) SS.crossoverLeft--;
+
+    // ── Anchor 1: Heading ─────────────────────────────────
+    const dist8  = (px - e8)  / atr;
+    const dist21 = (px - e21) / atr;
+    const spread = (e8  - e21) / atr;
+    const headingRaw = clamp(dist8*0.50 + spread*0.30 + dist21*0.20, -1, 1);
+
+    const aboveE8  = px > e8;
+    const aboveE21 = px > e21;
+    const betweenEMAs = (aboveE8 !== aboveE21) ||
+                        (Math.abs(dist8) < 0.15 && Math.abs(spread) < 0.10);
+
+    let heading, headingConf;
+    if      (betweenEMAs)        { heading = 'CONTESTED';    headingConf = 0.25; }
+    else if (aboveE8 && e8AboveE21)  { heading = 'ALIGNED_BULL'; headingConf = 0.88; }
+    else if (!aboveE8 && !e8AboveE21){ heading = 'ALIGNED_BEAR'; headingConf = 0.88; }
+    else if (e8AboveE21 && !aboveE8) { heading = 'LAGGING_BULL'; headingConf = 0.62; }
+    else                         { heading = 'LAGGING_BEAR'; headingConf = 0.62; }
+
+    SS.smoothHeading = smooth(SS.smoothHeading, headingRaw, CFG.ship.smoother);
+
+    // ── Anchor 2: Momentum ────────────────────────────────
+    const slope8   = clamp((e8  - e8p)  / (atr * SL8),  -1, 1);
+    const slope21  = clamp((e21 - e21p) / (atr * SL21), -1, 1);
+    const spreadNow  = (e8   - e21)   / atr;
+    const spreadPrev = (e8_5 - e21_5) / atr;
+    const spreadChg  = clamp(spreadNow - spreadPrev, -1, 1);
+    const momentumRaw = clamp(slope8*0.50 + slope21*0.30 + spreadChg*0.20, -1, 1);
+
+    const slopeAgree = Math.sign(slope8) === Math.sign(slope21);
+    const expanding  = Math.sign(spreadChg) === Math.sign(spreadNow);
+    let momentumConf;
+    if      (Math.abs(slope8) < 0.05)       momentumConf = 0.20;
+    else if (slopeAgree && expanding)        momentumConf = 0.85;
+    else if (slopeAgree)                     momentumConf = 0.65;
+    else                                     momentumConf = 0.40;
+
+    SS.smoothMomentum = smooth(SS.smoothMomentum, momentumRaw, CFG.ship.smoother);
+
+    // ── Anchor 3: VPOC ────────────────────────────────────
+    const vpocGap = clamp((px - vpoc) / atr, -3, 3);
+    let vpocRaw   = clamp(vpocVel*0.60 + vpocGap*0.40, -1, 1);
+    if (Math.abs(vpocGap) > 2.5 && Math.abs(vpocVel) < 0.05) vpocRaw *= 0.30;
+
+    const vpocAligned = Math.sign(vpocGap) === Math.sign(vpocVel);
+    let vpocState, vpocConf;
+    if      (Math.abs(vpocVel) < CFG.ship.vpocRejectionThresh * 0.5)
+      { vpocState = 'STALLED';    vpocConf = 0.35; }
+    else if (!vpocAligned && Math.abs(vpocVel) > CFG.ship.vpocRejectionThresh)
+      { vpocState = 'REJECTING';  vpocConf = 0.20; }
+    else if (vpocAligned)
+      { vpocState = 'CHASING';    vpocConf = 0.85; }
+    else
+      { vpocState = 'STALLED';    vpocConf = 0.35; }
+
+    SS.smoothVpoc = smooth(SS.smoothVpoc, vpocRaw, CFG.ship.smoother);
+
+    // ── Dynamic weights + gates ───────────────────────────
+    let wH = CFG.ship.headingWeight;    // 0.40
+    let wM = CFG.ship.momentumWeight;   // 0.35
+    let wV = CFG.ship.vpocWeight;       // 0.25
+    let confCap = 1.0;
+
+    if (betweenEMAs)          confCap = Math.min(confCap, CFG.ship.betweenEmasConfCap);
+    if (SS.crossoverLeft > 0) confCap = Math.min(confCap, CFG.ship.crossoverConfCap);
+
+    if (vpocState === 'REJECTING') {
+      wV = CFG.ship.vpocRejectionWeight;
+      const tot = wH + wM;
+      wH = (1 - wV) * (wH / tot);
+      wM = (1 - wV) * (wM / tot);
+    }
+
+    // ── Final score ───────────────────────────────────────
+    const totalConf = headingConf*wH + momentumConf*wM + vpocConf*wV;
+    const rawScore = totalConf > 0
+      ? (SS.smoothHeading*headingConf*wH + SS.smoothMomentum*momentumConf*wM + SS.smoothVpoc*vpocConf*wV) / totalConf
+      : 0;
+
+    SS.smoothScore = smooth(SS.smoothScore, clamp(rawScore, -1, 1), CFG.ship.smoother);
+    const finalScore = clamp(SS.smoothScore, -1, 1);
+    const finalConf  = clamp(totalConf * confCap, 0, 1);
+
+    let state;
+    if      (finalConf < CFG.ship.confMin)         state = 'POSITION';
+    else if (finalScore >= CFG.ship.bullThresh)     state = 'BULL';
+    else if (finalScore <= CFG.ship.bearThresh)     state = 'BEAR';
+    else                                            state = 'POSITION';
+
+    return {
+      score: +finalScore.toFixed(3),
+      conf:  +finalConf.toFixed(3),
+      state, heading, vpocState,
+      anchors: {
+        heading:  +SS.smoothHeading.toFixed(3),
+        momentum: +SS.smoothMomentum.toFixed(3),
+        vpoc:     +SS.smoothVpoc.toFixed(3),
+        headingConf, momentumConf, vpocConf,
+      },
+      diag: {
+        px, ema8: +e8.toFixed(3), ema21: +e21.toFixed(3),
+        vpoc: +vpoc.toFixed(2), vpocGap: +vpocGap.toFixed(3), vpocVel: +vpocVel.toFixed(3),
+        slope8: +slope8.toFixed(3), slope21: +slope21.toFixed(3),
+        spreadChg: +spreadChg.toFixed(3), atr: +atr.toFixed(3),
+        betweenEMAs, crossoverActive: SS.crossoverLeft > 0,
+      },
+    };
+  } catch(e) {
+    log('SPYSHIP err: ' + e.message, 'err');
+    return null;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  SPYGRAVITY — Signal 2
+//
+//  One question: given the gamma cluster landscape — position,
+//  mass, dynamics, and DTE composition — what direction is the
+//  gravitational field pulling, and how clearly?
+//
+//  Four components:
+//    1. Cluster topology    — force per cluster, netField
+//    2. Dynamics            — growth rates, fieldRotation, cluster roles
+//    3. DTE temporal layers — 0/1/2DTE weights, persistence
+//    4. Gravitational map   — gradient, Lagrange points, emerging clusters,
+//                             overlap zones
+//
+//  Reads: Lake.gamma.spot + Lake.gamma.expiry + Lake history for dynamics
+//  Knows nothing about: bars, EMAs, VPOC, named levels, flow
+// ═══════════════════════════════════════════════════════════
+
+const GravState = {
+  smoothScore:     0,
+  sessionPeakMass: 0,   // highest cluster mass seen this session
+};
+
+// ── Time helpers ──────────────────────────────────────────────────
+function etNow() {
+  try {
+    const d  = new Date();
+    const et = new Date(d.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    return {
+      hour:    et.getHours() + et.getMinutes() / 60,
+      dateStr: et.toISOString().slice(0, 10),
+    };
+  } catch(e) {
+    return { hour: 12, dateStr: new Date().toISOString().slice(0, 10) };
+  }
+}
+
+function zeroTimeDecay(etHour) {
+  // 0DTE field authority decays as session close (4pm ET) approaches
+  return Math.max(0.10, Math.min(1.0, (16.0 - etHour) / 6.5));
+}
+
+function calcDTE(expiryStr, todayStr) {
+  try {
+    return Math.max(0, Math.round(
+      (new Date(expiryStr) - new Date(todayStr)) / 86400000
+    ));
+  } catch(e) { return 99; }
+}
+
+// ── Force decay by distance ───────────────────────────────────────
+function gravDecay(distATR) {
+  return distATR < 0.5 ? 1.00
+       : distATR < 1.5 ? 0.75
+       : distATR < 2.5 ? 0.45
+       : distATR < 4.0 ? 0.20
+       : 0.0;
+}
+
+// ── Net force at any test price (used for gradient map) ───────────
+// Uses adjustedForce which includes dynamics — matches what Lagrange
+// analysis confirmed: adjusted force (not base) gives the live field
+function fieldForceAt(testPx, clusters, atr) {
+  let net = 0, total = 0;
+  for (const c of clusters) {
+    const d   = Math.abs(testPx - c.strike) / atr;
+    const dec = gravDecay(d);
+    const dir = testPx < c.strike ? 1 : -1;  // above test point pulls up, below pulls down
+    const f   = c.adjustedForce_abs * dec * dir;
+    net   += f;
+    total += Math.abs(f);
+  }
+  return { net, total };
+}
+
+// ── Gradient map: sweep price range, compute F(x) and dF/dx ──────
+// Returns decel zones, pin zones, vacuum tubes, and Lagrange points
+function buildGradientMap(clusters, px, atr) {
+  const STEP     = 0.10;   // ATR per sample
+  const RANGE    = 4.0;    // ATR on each side
+  const STEPS    = Math.round(RANGE / STEP) * 2 + 1;
+  const samples  = [];
+
+  for (let i = 0; i < STEPS; i++) {
+    const testPx  = px + (i - Math.floor(STEPS / 2)) * STEP * atr;
+    const { net, total } = fieldForceAt(testPx, clusters, atr);
+    samples.push({ px: testPx, net, total, distATR: (testPx - px) / atr });
+  }
+
+  // Numerical gradient dF/dx (central difference)
+  for (let i = 1; i < samples.length - 1; i++) {
+    samples[i].gradient = (samples[i + 1].net - samples[i - 1].net) / (2 * STEP * atr);
+  }
+  samples[0].gradient             = samples[1].gradient             || 0;
+  samples[samples.length-1].gradient = samples[samples.length-2].gradient || 0;
+
+  // Classify zones from the force and gradient profiles
+  const gradientZones  = [];
+  const lagrangePoints = [];
+
+  // Lagrange points: zero crossings of net force between clusters
+  // Only between pairs of significant clusters (both > 10% peak)
+  const sigMass = GravState.sessionPeakMass * 0.10;
+  for (let i = 0; i < samples.length - 1; i++) {
+    const s0 = samples[i], s1 = samples[i + 1];
+    if (Math.sign(s0.net) !== Math.sign(s1.net) && s0.total > 0.01 && s1.total > 0.01) {
+      // Linear interpolation to find exact crossing
+      const t    = Math.abs(s0.net) / (Math.abs(s0.net) + Math.abs(s1.net));
+      const lPx  = s0.px + t * (s1.px - s0.px);
+      const dist = Math.abs(lPx - px) / atr;
+
+      // Find the clusters bracketing this crossing
+      const below = clusters.filter(c => c.strike < lPx).sort((a,b) => b.strike - a.strike)[0];
+      const above = clusters.filter(c => c.strike > lPx).sort((a,b) => a.strike - b.strike)[0];
+
+      // Only flag if both bracketing clusters have meaningful mass
+      if (below && above && below.mass > sigMass && above.mass > sigMass) {
+        const massRatio = Math.min(below.mass, above.mass) / Math.max(below.mass, above.mass);
+        lagrangePoints.push({
+          price:        +lPx.toFixed(2),
+          distATR:      +dist.toFixed(2),
+          stability:    massRatio > 0.40 ? 'STABLE' : 'UNSTABLE',
+          massBelow:    +below.mass.toFixed(0),
+          massAbove:    +above.mass.toFixed(0),
+          strikeBelow:  below.strike,
+          strikeAbove:  above.strike,
+        });
+      }
+    }
+  }
+
+  // Zone classification: scan for sustained zone types
+  // Group consecutive samples of the same character
+  let zoneStart = null, zoneType = null;
+  const DECEL_GRAD_THRESH  = 0.30;  // |gradient| above this = rapid force change
+  const PIN_FORCE_THRESH   = 0.50;  // |net|/total above this = strong net pull
+  const VAC_THRESH         = 0.08;  // |net|/total below this = near-zero force
+
+  for (let i = 0; i < samples.length; i++) {
+    const s       = samples[i];
+    const relNet  = s.total > 0 ? Math.abs(s.net) / s.total : 0;
+    const absGrad = Math.abs(s.gradient || 0) * atr;  // normalize gradient
+
+    const type =
+      absGrad > DECEL_GRAD_THRESH ? 'DECEL_ZONE'
+      : relNet < VAC_THRESH       ? 'VACUUM_TUBE'
+      : relNet > PIN_FORCE_THRESH ? 'PIN_ZONE'
+      : null;
+
+    if (type !== zoneType) {
+      if (zoneType && zoneStart !== null && i - zoneStart >= 2) {
+        // Commit zone if it spans at least 2 samples (0.2 ATR)
+        const center = samples[Math.floor((zoneStart + i) / 2)];
+        const width  = (i - zoneStart) * STEP;
+        gradientZones.push({
+          price:   +center.px.toFixed(2),
+          type:    zoneType,
+          distATR: +Math.abs(center.distATR).toFixed(2),
+          width:   +width.toFixed(2),
+          strength: zoneType === 'DECEL_ZONE'
+            ? +Math.min(Math.abs(center.gradient || 0) * atr / DECEL_GRAD_THRESH, 1).toFixed(2)
+            : zoneType === 'PIN_ZONE'
+            ? +(Math.abs(center.net) / (center.total || 1)).toFixed(2)
+            : +(1 - Math.abs(center.net) / (center.total || 0.01)).toFixed(2),
+        });
+      }
+      zoneType  = type;
+      zoneStart = i;
+    }
+  }
+
+  return { samples, gradientZones, lagrangePoints };
+}
+
+// ── Main SPYGRAVITY compute ───────────────────────────────────────
+function computeSPYGRAVITY(row) {
+  try {
+    const spotData   = row?.gamma?.spot;
+    const expiryData = row?.gamma?.expiry;
+    if (!spotData || spotData.length === 0) return null;
+
+    const px  = row?.quote?.last || (row?.bars?.length ? row.bars[row.bars.length-1].c : 0);
+    if (!px) return null;
+    const atr = row.bars ? calcATR(row.bars, 14) : null;
+    if (!atr || atr < 0.005) return null;
+
+    const { hour: etHour, dateStr: todayStr } = etNow();
+
+    // ── Step 1: Build cluster map from gamma.spot ─────────────────
+    const allStrikes = spotData.map(s => ({
+      strike:    parseFloat(s.strike),
+      // UW field names vary by endpoint version — try all known variants
+      callGamma: Math.abs(parseFloat(
+        s.call_gamma_oi ?? s.call_gex ?? s.calls_gex ?? s.call_gamma ?? s.calls_gamma ?? 0
+      ) || 0),
+      putGamma: Math.abs(parseFloat(
+        s.put_gamma_oi ?? s.put_gex ?? s.puts_gex ?? s.put_gamma ?? s.puts_gamma ?? 0
+      ) || 0),
+    })).filter(s => !isNaN(s.strike) && s.strike > 0);
+
+    // Session peak mass (running max — never resets within session)
+    allStrikes.forEach(s => {
+      const m = s.callGamma + s.putGamma;
+      if (m > GravState.sessionPeakMass) GravState.sessionPeakMass = m;
+    });
+
+    const PEAK      = GravState.sessionPeakMass;
+    const THRESHOLD = Math.max(PEAK * 0.03, 1);   // 3% of peak = significant
+    const EMERGING  = Math.max(PEAK * 0.01, 0.5); // 1% of peak = emerging
+
+    // Significant clusters (≥3% peak, within 4 ATR)
+    const clusters = allStrikes
+      .filter(s => (s.callGamma + s.putGamma) >= THRESHOLD
+                && Math.abs(s.strike - px) / atr <= 4.0)
+      .map(s => {
+        const mass    = s.callGamma + s.putGamma;
+        const netGEX  = s.callGamma - s.putGamma;
+        const distATR = Math.abs(s.strike - px) / atr;
+        const dir     = s.strike > px ? 1 : -1;
+        return {
+          strike: s.strike, mass, netGEX, distATR, dir,
+          decay: gravDecay(distATR),
+          baseForce: mass * gravDecay(distATR) * dir,
+          role: 'ATTRACTOR',
+          // adjustedForce set in Step 2 after dynamics
+        };
+      })
+      .sort((a, b) => a.distATR - b.distATR);
+
+    if (clusters.length === 0) {
+      // Log field names once to diagnose UW response format
+      if (spotData.length > 0 && Lake.count() % 24 === 1) {
+        log('GRAV debug — spot fields: ' + Object.keys(spotData[0]).join(', '), 'warn');
+        log('GRAV debug — peak=' + GravState.sessionPeakMass.toFixed(0) + ' thresh=' + THRESHOLD.toFixed(0) + ' strikes=' + allStrikes.length, 'warn');
+      }
+      return null;
+    }
+
+    // ── Step 2: Dynamics — compare to prior lake reading (~5 min) ─
+    const histRows = Lake.last(65);
+    let priorSpot  = null;
+    for (let i = 0; i < histRows.length - 5; i++) {
+      if (histRows[i]?.gamma?.spot?.length > 0) {
+        priorSpot = histRows[i].gamma.spot;
+        break;
+      }
+    }
+
+    const priorMap = {};
+    if (priorSpot) {
+      priorSpot.forEach(s => {
+        const k = parseFloat(s.strike);
+        if (!isNaN(k)) priorMap[k] = Math.abs(parseFloat(s.call_gamma_oi)||0)
+                                    + Math.abs(parseFloat(s.put_gamma_oi)||0);
+      });
+    }
+    const hasHistory = Object.keys(priorMap).length > 0;
+
+    // Growth rates and adjusted forces
+    clusters.forEach(c => {
+      const prior     = priorMap[c.strike] || 0;
+      c.growthRate    = hasHistory && prior > 0
+        ? clamp((c.mass - prior) / prior, -0.80, 0.80) : 0;
+      c.dynamics      = c.growthRate >  0.12 ? 'BUILDING'
+                      : c.growthRate < -0.12 ? 'DISSOLVING' : 'STABLE';
+      // adjustedForce: dynamics modulate gravitational pull
+      // Using adjustedForce for Lagrange computation (confirmed correct)
+      c.adjustedForce     = c.baseForce * (1 + c.growthRate * 0.60);
+      c.adjustedForce_abs = Math.abs(c.mass * c.decay * (1 + c.growthRate * 0.60));
+      // Field rotation: derivative of gravitational field
+      // Sign logic: above(+) × building(+) = +rotation (bullish)
+      //             above(+) × dissolving(-) = -rotation (ceiling weakening, bearish)
+      //             below(-) × building(+) = -rotation (floor hardening, bearish pull)
+      //             below(-) × dissolving(-) = +rotation (floor releasing, bullish)
+      c.rotationContrib = c.growthRate * c.adjustedForce;
+    });
+
+    // Net field and rotation
+    const totalAdj = clusters.reduce((s, c) => s + Math.abs(c.adjustedForce), 0);
+    const sumAdj   = clusters.reduce((s, c) => s + c.adjustedForce, 0);
+    const sumRot   = clusters.reduce((s, c) => s + c.rotationContrib, 0);
+    if (totalAdj < 0.001) return null;
+
+    const netField      = clamp(sumAdj / totalAdj, -1, 1);
+    const fieldRotation = clamp(sumRot / totalAdj, -1, 1);
+
+    // Above / below mass split for field state
+    let aboveMass = 0, belowMass = 0;
+    clusters.forEach(c => { if (c.dir > 0) aboveMass += c.mass; else belowMass += c.mass; });
+    const totalMass  = aboveMass + belowMass || 1;
+    const massRatio  = Math.min(aboveMass, belowMass) / Math.max(aboveMass, belowMass);
+    const fieldState = massRatio >= 0.55 ? 'BOUNDED'
+                     : massRatio >= 0.25 ? 'CONTESTED' : 'CLEAR_RUNWAY';
+
+    // ── Step 3: Cluster roles ─────────────────────────────────────
+    const byStrike    = [...clusters].sort((a, b) => a.strike - b.strike);
+    const aboveClust  = clusters.filter(c => c.dir >  0).sort((a, b) => a.distATR - b.distATR);
+    const belowClust  = clusters.filter(c => c.dir < 0).sort((a, b) => a.distATR - b.distATR);
+
+    // Vacuum: gap > 1.5 ATR between consecutive same-side clusters
+    const vacuumAbove = aboveClust.length >= 2
+      && (aboveClust[1].distATR - aboveClust[0].distATR) > 1.5;
+    const vacuumBelow = belowClust.length >= 2
+      && (belowClust[1].distATR - belowClust[0].distATR) > 1.5;
+
+    // Boundary: cluster between two larger clusters with balanced netGEX
+    byStrike.forEach((c, i) => {
+      if (i === 0 || i === byStrike.length - 1) return;
+      const largerBelow = byStrike.slice(0, i).some(x => x.mass > c.mass * 1.5);
+      const largerAbove = byStrike.slice(i + 1).some(x => x.mass > c.mass * 1.5);
+      const balanced    = Math.abs(c.netGEX) / c.mass < 0.20;
+      if (largerBelow && largerAbove && balanced && c.distATR < 1.5)
+        c.role = 'BOUNDARY';
+    });
+
+    // Dominant cluster (highest mass within 4 ATR)
+    const dominant = clusters.reduce((b, c) => (!b || c.mass > b.mass) ? c : b, null);
+
+    if (dominant) {
+      const ngn = Math.abs(dominant.netGEX) / dominant.mass;
+      if      (dominant.distATR < 0.30 && ngn > 0.30 && dominant.dynamics === 'BUILDING')
+        dominant.role = 'PIN';
+      else if (dominant.dynamics === 'BUILDING' && Math.sign(netField) === dominant.dir)
+        dominant.role = 'LAUNCH';
+      else if (dominant.dynamics === 'DISSOLVING' && dominant.distATR > 0.80)
+        dominant.role = 'HANDOFF';
+    }
+
+    const wallEffect = !!(dominant && dominant.distATR < 0.50 && dominant.dynamics === 'BUILDING');
+
+    // 0DTE field state
+    let field0DTEstate = 'NORMAL';
+    if      (dominant?.role === 'PIN')     field0DTEstate = 'PINNED';
+    else if (dominant?.role === 'LAUNCH')  field0DTEstate = 'LAUNCHING';
+    else if (dominant?.role === 'HANDOFF') field0DTEstate = 'TRANSITIONING';
+    else {
+      const nearBoundary = clusters.find(c => c.role === 'BOUNDARY' && c.distATR < 0.40);
+      if      (nearBoundary)                           field0DTEstate = 'IN_TRANSIT';
+      else if (vacuumAbove && netField > 0)            field0DTEstate = 'APPROACHING_STRUCTURAL';
+      else if (vacuumBelow && netField < 0)            field0DTEstate = 'APPROACHING_STRUCTURAL';
+    }
+
+    // ── Step 4: Gravitational map ─────────────────────────────────
+
+    // 4a: Gradient map → decel zones, vacuum tubes, pin zones, Lagrange points
+    const { gradientZones, lagrangePoints } = buildGradientMap(clusters, px, atr);
+
+    // 4b: Overlap zones — two clusters within 0.8 ATR of each other
+    const overlapZones = [];
+    for (let i = 0; i < byStrike.length - 1; i++) {
+      const a = byStrike[i], b = byStrike[i + 1];
+      const gapATR = (b.strike - a.strike) / atr;
+      if (gapATR < 0.80) {
+        // Mass-weighted center
+        const center = (a.strike * a.mass + b.strike * b.mass) / (a.mass + b.mass);
+        // Compound mass: simple sum plus interaction term
+        const compound = a.mass + b.mass + (a.mass * b.mass / PEAK);
+        overlapZones.push({
+          price:       +center.toFixed(2),
+          distATR:     +Math.abs(center - px) / atr,
+          compoundMass: +compound.toFixed(0),
+          zoneWidth:   +gapATR.toFixed(2),
+          strikePair:  [a.strike, b.strike],
+        });
+      }
+    }
+
+    // 4c: Emerging clusters — sub-threshold (1-3% peak) and growing
+    const emergingClusters = allStrikes
+      .filter(s => {
+        const m = s.callGamma + s.putGamma;
+        const d = Math.abs(s.strike - px) / atr;
+        return m >= EMERGING && m < THRESHOLD && d <= 4.0;
+      })
+      .map(s => {
+        const mass = s.callGamma + s.putGamma;
+        const prior = priorMap[s.strike] || 0;
+        const gr = hasHistory && prior > 0
+          ? clamp((mass - prior) / prior, -1, 1) : 0;
+        const massFrac = mass / PEAK;
+        // Estimate periods until crossing 3% threshold at current growth rate
+        const toThreshold = gr > 0.01
+          ? Math.round((THRESHOLD - mass) / (mass * gr)) : 999;
+        return {
+          strike:           s.strike,
+          massFrac:         +massFrac.toFixed(3),
+          growthRate:       +gr.toFixed(3),
+          distATR:          +Math.abs(s.strike - px) / atr,
+          barsToSignificant: toThreshold,
+          imminent:         toThreshold <= 6 && gr > 0.01,
+        };
+      })
+      .filter(s => s.growthRate > 0.05)  // only growing sub-threshold clusters
+      .sort((a, b) => a.distATR - b.distATR)
+      .slice(0, 5);
+
+    // ── Step 5: DTE composition from gamma.expiry ─────────────────
+    let mass0DTE = 0, mass1DTE = 0, mass2DTE = 0;
+    if (expiryData && expiryData.length > 0) {
+      expiryData.forEach(e => {
+        const dte  = calcDTE(e.expiry, todayStr);
+        const absd = Math.abs(parseFloat(e.call_delta) || 0)
+                   + Math.abs(parseFloat(e.put_delta)  || 0);
+        if      (dte === 0) mass0DTE += absd;
+        else if (dte === 1) mass1DTE += absd;
+        else                mass2DTE += absd;
+      });
+    }
+    const totalDTE = mass0DTE + mass1DTE + mass2DTE || 1;
+    const frac0    = mass0DTE / totalDTE;
+    const frac1    = mass1DTE / totalDTE;
+    const frac2    = mass2DTE / totalDTE;
+    const nearFrac = frac0 + frac1;
+
+    // Persistence score: DTE-weighted duration of the field
+    const persistenceScore = frac0 * 0.5 + frac1 * 1.5 + frac2 * 2.5;
+
+    // Temporal weights (0DTE decays to close)
+    const tdecay = zeroTimeDecay(etHour);
+    const w0 = frac0 * tdecay;
+    const w1 = frac1 * 1.5;
+    const w2 = frac2 * 2.0;
+    const wTotal = (w0 + w1 + w2) || 1;
+
+    // Approximate per-layer fields
+    const field0DTE = netField * frac0;
+    const field1DTE = netField * frac1;
+    const field2DTE = netField * frac2;
+
+    // DTE-weighted composite
+    const compositeField = clamp(
+      (field0DTE * w0 + field1DTE * w1 + field2DTE * w2) / wTotal,
+      -1, 1
+    );
+
+    // ── Step 6: Holistic dynamics (above vs below) ────────────────
+    let aboveDynScore = 0, aboveDynWt = 0, belowDynScore = 0, belowDynWt = 0;
+    clusters.forEach(c => {
+      if (c.dir > 0) { aboveDynScore += c.growthRate * c.mass; aboveDynWt += c.mass; }
+      else           { belowDynScore += c.growthRate * c.mass; belowDynWt += c.mass; }
+    });
+    const aboveDynAvg = aboveDynWt > 0 ? aboveDynScore / aboveDynWt : 0;
+    const belowDynAvg = belowDynWt > 0 ? belowDynScore / belowDynWt : 0;
+
+    // Transition signal
+    const aboveDiss = aboveDynAvg < -0.12;
+    const belowDiss = belowDynAvg < -0.12;
+    const aboveBld  = aboveDynAvg >  0.12;
+    const belowBld  = belowDynAvg >  0.12;
+
+    let transitionSignal;
+    if      (aboveDiss && belowDiss) transitionSignal = 'RESETTING';
+    else if (aboveDiss && belowBld)  transitionSignal =
+      persistenceScore > 2.5 ? 'REVERSAL' : persistenceScore > 1.5 ? 'PULLBACK' : 'PAUSE';
+    else if (aboveBld  && belowDiss) transitionSignal = 'CONTINUATION';
+    else if (Math.abs(fieldRotation) < 0.10) transitionSignal = 'CONTINUATION';
+    else if (Math.sign(fieldRotation) !== Math.sign(compositeField) && Math.abs(fieldRotation) > 0.25)
+      transitionSignal = persistenceScore > 2.5 ? 'REVERSAL' : persistenceScore > 1.5 ? 'PULLBACK' : 'PAUSE';
+    else transitionSignal = 'CONTINUATION';
+
+    // ── Step 7: Confidence model ──────────────────────────────────
+    let conf = fieldState === 'CLEAR_RUNWAY' ? 0.80
+             : fieldState === 'CONTESTED'    ? 0.55 : 0.30;
+
+    // Gradient map features modulate confidence
+    const nearLagrange = lagrangePoints.filter(l => l.distATR < 0.50);
+    if (nearLagrange.length > 0) {
+      // Near a Lagrange point — directional signal unreliable until resolved
+      const stable = nearLagrange.some(l => l.stability === 'STABLE');
+      conf -= stable ? 0.15 : 0.08;  // stable L1 = sharp snap zone = less predictable
+    }
+
+    // Vacuum ahead amplifies confidence in field direction
+    const vacuumAhead = (netField > 0 && vacuumAbove) || (netField < 0 && vacuumBelow);
+    if (vacuumAhead) conf += 0.08;  // no friction ahead — field direction reliable
+
+    // Overlap zone nearby = pinning risk
+    const nearOverlap = overlapZones.filter(z => z.distATR < 0.50);
+    if (nearOverlap.length > 0) conf -= 0.05;  // compound pin — uncertain direction
+
+    // Standard adjustments
+    if (Math.sign(netField) === Math.sign(fieldRotation) && Math.abs(fieldRotation) > 0.10)
+      conf += 0.10;
+    else if (Math.sign(netField) !== Math.sign(fieldRotation) && Math.abs(fieldRotation) > 0.25)
+      conf -= 0.15;
+
+    if ((aboveBld && belowDiss) || (aboveDiss && belowBld)) conf += 0.10;
+    if (persistenceScore > 2.5) conf += 0.05;
+    if (nearFrac > 0.85 && etHour > 15.0) conf *= 0.75;
+    else if (frac2 > 0.50) conf += 0.05;
+
+    const dissolvingMass = clusters.filter(c => c.dynamics === 'DISSOLVING')
+                                   .reduce((s, c) => s + c.mass, 0);
+    if (dissolvingMass / totalMass > 0.80) conf -= 0.25;
+
+    if (!hasHistory)              conf = Math.min(conf, 0.65);
+    if (fieldState === 'BOUNDED') conf = Math.min(conf, 0.35);
+    conf = clamp(conf, 0, 1.0);
+
+    // ── Step 8: Final score ───────────────────────────────────────
+    const rawScore = clamp(compositeField * 0.65 + fieldRotation * 0.35, -1, 1);
+    GravState.smoothScore = smooth(GravState.smoothScore, rawScore, 0.25);
+    const finalScore = clamp(GravState.smoothScore, -1, 1);
+
+    const state = conf < 0.35         ? 'POSITION'
+                : finalScore >= 0.40  ? 'BULL'
+                : finalScore <= -0.40 ? 'BEAR'
+                : 'POSITION';
+
+    return {
+      // Primary outputs
+      score:            +finalScore.toFixed(3),
+      conf:             +conf.toFixed(3),
+      state,
+      fieldState,
+      netField:         +netField.toFixed(3),
+      fieldRotation:    +fieldRotation.toFixed(3),
+      compositeField:   +compositeField.toFixed(3),
+      transitionSignal,
+      // Field character
+      wallEffect,
+      field0DTEstate,
+      vacuumAbove,
+      vacuumBelow,
+      vacuumAhead,
+      // Dominant cluster
+      dominantStrike:  dominant?.strike   || 0,
+      dominantDir:     dominant?.dir      || 0,
+      dominantDyn:     dominant?.dynamics || 'STABLE',
+      dominantRole:    dominant?.role     || 'ATTRACTOR',
+      // DTE
+      nearFraction:    +nearFrac.toFixed(3),
+      persistenceScore: +persistenceScore.toFixed(2),
+      field0DTE:       +field0DTE.toFixed(3),
+      field1DTE:       +field1DTE.toFixed(3),
+      field2DTE:       +field2DTE.toFixed(3),
+      // Dynamics
+      aboveDynAvg:     +aboveDynAvg.toFixed(3),
+      belowDynAvg:     +belowDynAvg.toFixed(3),
+      // Gravitational map outputs (for SPYSTATIONS consumption)
+      lagrangePoints,      // [{price, distATR, stability, massBelow, massAbove, strikeBelow, strikeAbove}]
+      gradientZones,       // [{price, type, distATR, width, strength}]
+      overlapZones,        // [{price, distATR, compoundMass, zoneWidth, strikePair}]
+      emergingClusters,    // [{strike, massFrac, growthRate, distATR, barsToSignificant, imminent}]
+      // Cluster table
+      clusters: clusters.slice(0, 8).map(c => ({
+        strike:   c.strike,
+        mass:     +c.mass.toFixed(0),
+        dir:      c.dir,
+        dynamics: c.dynamics,
+        distATR:  +c.distATR.toFixed(2),
+        netGEX:   +c.netGEX.toFixed(0),
+        role:     c.role,
+      })),
+      // Diagnostics
+      diagnostics: {
+        aboveMass:       +aboveMass.toFixed(0),
+        belowMass:       +belowMass.toFixed(0),
+        totalMass:       +totalMass.toFixed(0),
+        clusterCount:    clusters.length,
+        dissolvingFrac:  +(dissolvingMass / totalMass).toFixed(3),
+        lagrangeCount:   lagrangePoints.length,
+        overlapCount:    overlapZones.length,
+        emergingCount:   emergingClusters.length,
+        hasHistory,
+        frac0:           +frac0.toFixed(3),
+        frac1:           +frac1.toFixed(3),
+        frac2:           +frac2.toFixed(3),
+        tdecay:          +tdecay.toFixed(2),
+      },
+    };
+  } catch(e) {
+    log('SPYGRAVITY err: ' + e.message, 'err');
+    return null;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  SPYSTATIONS — Signal 3
+//
+//  One question: given the named structural levels and
+//  gravitationally-computed positions near the ship — which
+//  are active, what character are they showing, and what
+//  does that imply for the next move?
+//
+//  Two-layer architecture:
+//    buildStationMap()        — physics positions (30s, on gamma refresh)
+//    evaluateStationCharacter() — bar interaction history (5s)
+//
+//  Station types (in significance order):
+//    ORB_H/L  — opening range boundaries (1.00)
+//    PDH/PDL  — prior day high/low (1.00)
+//    SESS_H/L — session high/low (0.90)
+//    LAGRANGE — L1 balance points from SPYGRAVITY (0.80)
+//    OVERLAP  — compound cluster zones from SPYGRAVITY (0.80)
+//    GAMMA    — dominant gamma cluster strikes (0.85)
+//    EMERGING — sub-threshold growing clusters (0.65)
+//    ROUND    — prices ending in 0 or 5 (0.60)
+//
+//  Reads: row.bars, row.pdhl, row.quote + gravOutput from computeSPYGRAVITY
+//  Knows nothing about: EMA dynamics, field forces, flow
+// ═══════════════════════════════════════════════════════════
+
+const StationState = {
+  smoothScore:  0,
+  orbHigh:      0,
+  orbLow:       0,
+  orbSet:       false,
+  orbDate:      '',
+  sessHigh:     0,
+  sessLow:      0,
+  sessDate:     '',
+  barCharCache: {},  // {stationKey: {character, rejCount, lastBar}}
+};
+
+// ── ORB computation (first 30 min of session) ─────────────────────
+function updateORB(bars, todayStr) {
+  if (StationState.orbDate === todayStr && StationState.orbSet) return;
+  // Reset for new day
+  if (StationState.orbDate !== todayStr) {
+    StationState.orbHigh = 0; StationState.orbLow = 0;
+    StationState.orbSet  = false; StationState.orbDate = todayStr;
+    StationState.sessHigh = 0; StationState.sessLow = 0;
+    StationState.sessDate = todayStr;
+    StationState.barCharCache = {};
+  }
+  // ORB = first 30 bars of the session (Tradier returns bars in chronological order).
+  // Using bar index avoids timezone parsing issues — Tradier timestamps are ET strings
+  // but JS Date() treats them as local time, which breaks time-of-day filtering.
+  const ORB_BARS = 30;
+  if (bars.length >= ORB_BARS) {
+    const orbBars = bars.slice(0, ORB_BARS);
+    StationState.orbHigh = Math.max(...orbBars.map(b => b.h));
+    StationState.orbLow  = Math.min(...orbBars.map(b => b.l));
+    StationState.orbSet  = true;
+  } else if (bars.length >= 3) {
+    // ORB still forming — use available bars as partial range
+    StationState.orbHigh = Math.max(...bars.map(b => b.h));
+    StationState.orbLow  = Math.min(...bars.map(b => b.l));
+  }
+}
+
+// ── Session high/low (running) ────────────────────────────────────
+function updateSessionHL(bars, todayStr) {
+  if (StationState.sessDate !== todayStr) {
+    StationState.sessHigh = 0; StationState.sessLow = 0;
+    StationState.sessDate = todayStr;
+  }
+  if (!bars || bars.length === 0) return;
+  const highs = bars.map(b => b.h);
+  const lows  = bars.map(b => b.l);
+  StationState.sessHigh = Math.max(...highs);
+  StationState.sessLow  = Math.min(...lows);
+}
+
+// ── Round number stations within range ───────────────────────────
+function roundStationsNear(px, atr) {
+  const stations = [];
+  const lo = Math.floor((px - 4 * atr) / 5) * 5;
+  const hi = Math.ceil((px  + 4 * atr) / 5) * 5;
+  for (let r = lo; r <= hi; r += 5) {
+    const dist = Math.abs(r - px) / atr;
+    if (dist <= 4.0 && dist > 0.02) {  // exclude current price
+      stations.push({ price: r, type: 'ROUND', significance: 0.60, distATR: dist });
+    }
+  }
+  return stations;
+}
+
+// ── Proximity weight (smooth, not stepped) ────────────────────────
+function proximityWeight(distATR) {
+  if (distATR > 2.0) return 0;
+  if (distATR > 1.0) return 2.0 - distATR;  // 0→1 as price approaches
+  return 1.0;
+}
+
+// ── Character evaluation from bars ───────────────────────────────
+// Examines last 20 bars at or near station price.
+// Returns {character, rejCount, confidence}
+function evaluateCharacter(stationPrice, bars, atr, key) {
+  const TOUCH_DIST = 0.25;  // bar must come within 0.25 ATR
+  const BREAK_DIST = 0.10;  // clean break = close past by 0.10 ATR
+
+  if (!bars || bars.length < 3) return { character: 'UNTESTED', rejCount: 0 };
+
+  const recent = bars.slice(-20);  // last 20 bars
+  const n      = recent.length;
+
+  let rejectionsAbove = 0;  // price below station, rejected upward push
+  let rejectionsBelow = 0;  // price above station, rejected downward push
+  let brokeAboveIdx   = -1;
+  let brokeBelowIdx   = -1;
+
+  recent.forEach((b, i) => {
+    const touchedAbove = b.h >= stationPrice - TOUCH_DIST * atr
+                      && b.h <= stationPrice + TOUCH_DIST * atr;
+    const touchedBelow = b.l <= stationPrice + TOUCH_DIST * atr
+                      && b.l >= stationPrice - TOUCH_DIST * atr;
+    const body       = Math.abs(b.c - b.o);
+    const upperWick  = b.h - Math.max(b.o, b.c);
+    const lowerWick  = Math.min(b.o, b.c) - b.l;
+
+    // Rejection from below (resistance): upper wick touches station, close stays below
+    if (touchedAbove && b.c < stationPrice - TOUCH_DIST * atr * 0.30) {
+      if (upperWick > body * 1.20) rejectionsAbove++;
+    }
+
+    // Rejection from above (support): lower wick touches station, close stays above
+    if (touchedBelow && b.c > stationPrice + TOUCH_DIST * atr * 0.30) {
+      if (lowerWick > body * 1.20) rejectionsBelow++;
+    }
+
+    // Break: full bar close through level by > BREAK_DIST ATR
+    if (b.o < stationPrice && b.c > stationPrice + BREAK_DIST * atr) brokeAboveIdx = i;
+    if (b.o > stationPrice && b.c < stationPrice - BREAK_DIST * atr) brokeBelowIdx = i;
+  });
+
+  // R2S: broke above, pulled back within 0.25 ATR, closed above again
+  let r2s = false, s2r = false;
+  if (brokeAboveIdx >= 0 && brokeAboveIdx <= n - 4) {
+    const afterBreak = recent.slice(brokeAboveIdx + 1);
+    const pulledBack = afterBreak.some(b => b.l < stationPrice + TOUCH_DIST * atr);
+    const heldAbove  = recent[n-1].c > stationPrice;
+    if (pulledBack && heldAbove) r2s = true;
+  }
+  if (brokeBelowIdx >= 0 && brokeBelowIdx <= n - 4) {
+    const afterBreak = recent.slice(brokeBelowIdx + 1);
+    const pulledBack = afterBreak.some(b => b.h > stationPrice - TOUCH_DIST * atr);
+    const heldBelow  = recent[n-1].c < stationPrice;
+    if (pulledBack && heldBelow) s2r = true;
+  }
+
+  let character;
+  if      (r2s)                      character = 'R2S';
+  else if (s2r)                      character = 'S2R';
+  else if (brokeAboveIdx === n-1
+        || (brokeAboveIdx >= n-5 && rejectionsAbove === 0))
+                                     character = 'BROKEN_UP';
+  else if (brokeBelowIdx === n-1
+        || (brokeBelowIdx >= n-5 && rejectionsBelow === 0))
+                                     character = 'BROKEN_DOWN';
+  else if (rejectionsAbove >= 2)     character = 'RESISTANCE';
+  else if (rejectionsBelow >= 2)     character = 'SUPPORT';
+  else                               character = 'UNTESTED';
+
+  return {
+    character,
+    rejCount: Math.max(rejectionsAbove, rejectionsBelow),
+  };
+}
+
+// ── Main compute ──────────────────────────────────────────────────
+function computeSPYSTATIONS(row, gravOutput) {
+  try {
+    const bars = row?.bars;
+    const px   = row?.quote?.last || (bars?.length ? bars[bars.length-1].c : 0);
+    if (!bars || bars.length < 10 || !px) return null;
+
+    const atr = calcATR(bars, 14);
+    if (!atr || atr < 0.005) return null;
+
+    const { hour: etHour, dateStr: todayStr } = etNow();
+
+    // ── Layer 1: Build station map ────────────────────────────────
+    updateORB(bars, todayStr);
+    updateSessionHL(bars, todayStr);
+
+    const pdh = row?.pdhl?.pdh || 0;
+    const pdl = row?.pdhl?.pdl || 0;
+
+    // Collect all candidate stations
+    const rawStations = [];
+
+    // Structural — ORB
+    if (StationState.orbHigh > 0)
+      rawStations.push({ price: StationState.orbHigh, type: 'ORB_H', significance: 1.00 });
+    if (StationState.orbLow > 0)
+      rawStations.push({ price: StationState.orbLow,  type: 'ORB_L', significance: 1.00 });
+
+    // Structural — PDH/PDL (from startup fetch)
+    if (pdh > 0) rawStations.push({ price: pdh, type: 'PDH', significance: 1.00 });
+    if (pdl > 0) rawStations.push({ price: pdl, type: 'PDL', significance: 1.00 });
+
+    // Structural — Session H/L (exclude if same as ORB)
+    const ORB_TOL = atr * 0.15;
+    if (StationState.sessHigh > 0 && Math.abs(StationState.sessHigh - StationState.orbHigh) > ORB_TOL)
+      rawStations.push({ price: StationState.sessHigh, type: 'SESS_H', significance: 0.90 });
+    if (StationState.sessLow > 0  && Math.abs(StationState.sessLow  - StationState.orbLow)  > ORB_TOL)
+      rawStations.push({ price: StationState.sessLow,  type: 'SESS_L', significance: 0.90 });
+
+    // Gravitational — from SPYGRAVITY output
+    if (gravOutput) {
+      // Significant gamma clusters
+      (gravOutput.clusters || []).forEach(c => {
+        rawStations.push({ price: c.strike, type: 'GAMMA', significance: 0.85,
+                           meta: { dynamics: c.dynamics, role: c.role } });
+      });
+
+      // Lagrange points
+      (gravOutput.lagrangePoints || []).forEach(l => {
+        rawStations.push({ price: l.price, type: 'LAGRANGE', significance: 0.80,
+                           meta: { stability: l.stability } });
+      });
+
+      // Overlap zones
+      (gravOutput.overlapZones || []).forEach(z => {
+        rawStations.push({ price: z.price, type: 'OVERLAP', significance: 0.80,
+                           meta: { compoundMass: z.compoundMass } });
+      });
+
+      // Emerging clusters (significance scales with growth)
+      (gravOutput.emergingClusters || []).filter(e => e.growthRate > 0.10).forEach(e => {
+        rawStations.push({ price: e.strike, type: 'EMERGING', significance: 0.65,
+                           meta: { imminent: e.imminent, growthRate: e.growthRate } });
+      });
+    }
+
+    // Round numbers
+    roundStationsNear(px, atr).forEach(s => rawStations.push(s));
+
+    // ── Deduplicate: merge stations within 0.20 ATR of each other ─
+    // Keep highest significance when merging
+    const merged = [];
+    rawStations.forEach(s => {
+      const d = Math.abs(s.price - px) / atr;
+      if (d > 4.0) return;  // beyond range
+      const existing = merged.find(m => Math.abs(m.price - s.price) / atr < 0.20);
+      if (existing) {
+        if (s.significance > existing.significance) {
+          existing.price = s.price;
+          existing.type  = s.type;
+          existing.significance = s.significance;
+          existing.meta  = s.meta;
+        }
+      } else {
+        merged.push({ ...s, distATR: d });
+      }
+    });
+
+    // ── Layer 2: Evaluate character from bar interaction ──────────
+    const stations = merged.map(s => {
+      const pw  = proximityWeight(s.distATR);
+      const key = s.type + '_' + s.price.toFixed(2);
+      const { character, rejCount } = pw > 0
+        ? evaluateCharacter(s.price, bars, atr, key)
+        : { character: 'UNTESTED', rejCount: 0 };
+
+      // Directional vote
+      const sigW = s.significance * pw;
+      let vote = 0;
+      switch (character) {
+        case 'R2S':         vote = +sigW * 1.30; break;
+        case 'SUPPORT':     vote = +sigW;         break;
+        case 'BROKEN_UP':   vote = +sigW * 0.30;  break;
+        case 'S2R':         vote = -sigW * 1.30;  break;
+        case 'RESISTANCE':  vote = -sigW;          break;
+        case 'BROKEN_DOWN': vote = -sigW * 0.30;  break;
+        default:            vote = 0;
+      }
+
+      return { ...s, character, rejCount, proximityWeight: pw, vote };
+    }).sort((a, b) => a.distATR - b.distATR);  // nearest first
+
+    // ── Score computation ─────────────────────────────────────────
+    const activeStations = stations.filter(s =>
+      s.proximityWeight > 0 && s.character !== 'UNTESTED' && s.character !== 'EMERGING'
+    );
+
+    const totalWeight = activeStations.reduce((s, st) => s + st.significance * st.proximityWeight, 0);
+    const rawScore    = totalWeight > 0
+      ? clamp(activeStations.reduce((s, st) => s + st.vote, 0) / totalWeight, -1, 1)
+      : 0;
+
+    StationState.smoothScore = smooth(StationState.smoothScore, rawScore, 0.35);
+    const finalScore = clamp(StationState.smoothScore, -1, 1);
+
+    // ── Confidence model ──────────────────────────────────────────
+    const activeCnt = activeStations.length;
+    let conf = activeCnt === 0 ? 0.00
+             : activeCnt === 1 ? 0.50
+             : activeCnt === 2 ? 0.65
+             : 0.75;
+
+    // R2S/S2R within 0.5 ATR = highest quality
+    const r2sClose = stations.some(s =>
+      (s.character === 'R2S' || s.character === 'S2R') && s.distATR < 0.50
+    );
+    if (r2sClose) conf += 0.15;
+
+    // Additional rejection tests boost confidence
+    const maxRej = Math.max(0, ...activeStations.map(s => s.rejCount));
+    conf += Math.min(0.10, (maxRej - 2) * 0.05);
+
+    // Untested dominant = uncertainty
+    if (activeCnt > 0 && activeStations.every(s => s.character === 'UNTESTED'))
+      conf -= 0.20;
+
+    // All broken = in-between territory
+    const allBroken = activeStations.length > 0 && activeStations.every(
+      s => s.character === 'BROKEN_UP' || s.character === 'BROKEN_DOWN'
+    );
+    if (allBroken) conf -= 0.10;
+
+    // Agreement: all active same direction
+    const bullVotes = activeStations.filter(s => s.vote > 0).length;
+    const bearVotes = activeStations.filter(s => s.vote < 0).length;
+    if (activeCnt > 1 && (bullVotes === activeCnt || bearVotes === activeCnt))
+      conf += 0.10;
+    else if (bullVotes > 0 && bearVotes > 0)
+      conf -= 0.05;
+
+    // Lagrange point nearby = binary snap uncertainty
+    const nearLagrange = stations.some(s => s.type === 'LAGRANGE' && s.distATR < 0.40);
+    if (nearLagrange) conf -= 0.10;
+
+    conf = clamp(conf, 0, 1.0);
+
+    // ── State ─────────────────────────────────────────────────────
+    const state = activeCnt === 0       ? 'POSITION'
+                : conf < 0.35           ? 'POSITION'
+                : finalScore >= 0.40    ? 'BULL'
+                : finalScore <= -0.40   ? 'BEAR'
+                : 'POSITION';
+
+    // ── Key flags ─────────────────────────────────────────────────
+    const r2sActive   = stations.some(s => s.character === 'R2S'  && s.distATR < 1.0);
+    const s2rActive   = stations.some(s => s.character === 'S2R'  && s.distATR < 1.0);
+    const wallApproach= stations.some(s =>
+      (s.character === 'RESISTANCE' || s.character === 'S2R') && s.distATR < 0.50
+    );
+    const floorApproach = stations.some(s =>
+      (s.character === 'SUPPORT' || s.character === 'R2S') && s.distATR < 0.50
+    );
+    const snapZone = stations.some(s => s.distATR < 0.15);
+    const nearest  = stations[0] || null;
+
+    return {
+      score:    +finalScore.toFixed(3),
+      conf:     +conf.toFixed(3),
+      state,
+      nearest:  nearest ? {
+        price:        nearest.price,
+        type:         nearest.type,
+        character:    nearest.character,
+        distATR:      +nearest.distATR.toFixed(2),
+        significance: nearest.significance,
+      } : null,
+      activeStations: activeStations.slice(0, 6),
+      allStations:    stations.slice(0, 10),
+      r2sActive,
+      s2rActive,
+      wallApproach,
+      floorApproach,
+      snapZone,
+      diagnostics: {
+        orbHigh: +StationState.orbHigh.toFixed(2),
+        orbLow:  +StationState.orbLow.toFixed(2),
+        pdh:     +(row?.pdhl?.pdh || 0).toFixed(2),
+        pdl:     +(row?.pdhl?.pdl || 0).toFixed(2),
+        sessHigh: +StationState.sessHigh.toFixed(2),
+        sessLow:  +StationState.sessLow.toFixed(2),
+        stationCount: stations.length,
+        activeCount:  activeCnt,
+        nearLagrange,
+      },
+    };
+  } catch(e) {
+    log('SPYSTATIONS err: ' + e.message, 'err');
+    return null;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  SPYFUEL — Signal 4
+//
+//  One question: is there enough institutional fuel aligned
+//  with a potential move, and is the field expanding or collapsing?
+//
+//  Non-linear model — the interaction between dimensions
+//  reveals what the flow MEANS, not just what it IS:
+//
+//  Five interaction terms:
+//    1. Urgency tensor     — capital × time compression (0DTE)
+//    2. Capital intensity  — premium × gamma density (OTM depth)
+//    3. DTE stack score    — cross-layer coherence
+//    4. Sweep acceleration — rate of change of flow arrival
+//    5. Moneyness vector   — deepening OTM vs covering ITM
+//
+//  Fuel ignition states:
+//    BURNING      — coherent, locked, accelerating
+//    PRE_IGNITION — building but not yet burned
+//    FADING       — direction maintained, fuel depleting
+//    COLLAPSED    — direction flip or sharp coherence drop
+//    QUIET        — no institutional flow
+//
+//  Reads: row.flow.alerts + row.dealer.netPrem
+//  Knows nothing about: EMAs, gamma fields, named levels
+// ═══════════════════════════════════════════════════════════
+
+const FuelState = {
+  smoothScore:    0,
+  lockCount:      0,      // consecutive readings same direction
+  lockDir:        0,      // direction of current lock
+  prevDir:        0,      // prior reading direction for flip detection
+  flipCount:      0,      // consecutive readings of flip
+  netPremHistory: [],     // rolling netPrem values for momentum
+  sweepHistory:   [],     // rolling qualifying sweep counts [{ts, callN, putN}]
+};
+
+// ── Compute SPYFUEL ───────────────────────────────────────────────
+function computeSPYFUEL(row) {
+  try {
+    const alerts  = row?.flow?.alerts;   // enriched by fetchFlow
+    const netPremData = row?.dealer?.netPrem;
+    const nopeData    = row?.dealer?.nope;
+
+    if (!alerts) return null;
+
+    const nowMs    = Date.now();
+    const px       = row?.quote?.last || 0;
+    const atr      = row?.bars ? calcATR(row.bars, 14) : 1.0;
+    const { hour: etHour } = etNow();
+
+    // 0DTE time compression (same as SPYGRAVITY)
+    const timeCompression = Math.min(1 / Math.max(16.0 - etHour, 0.25), 8.0);
+
+    // ── Filter qualifying sweeps ──────────────────────────────────
+    // Qualifying: premium ≥ $50k AND (has_sweep OR premium ≥ $200k) AND DTE ≤ 5
+    const WINDOW_MS = 60 * 60 * 1000;   // 60-minute window
+    const qualiRows = alerts.filter(r =>
+      r.qualifying && r.ageMs <= WINDOW_MS && r.dir !== 0
+    );
+
+    // ── Per-sweep scoring — five dimensions ───────────────────────
+    function scoreSweep(r) {
+      // Dim 1 — Urgency tensor: capital × time compression (0DTE only)
+      const urgency = r.dte === 0
+        ? r.prem * timeCompression * 0.001   // normalize: $1M × 4.0 → 4000
+        : r.prem * 0.001;
+
+      // Dim 2 — Capital intensity: gamma density per dollar
+      const otmDist   = px > 0 ? Math.abs(r.strike - px) / atr : 0;
+      const gammaDens = otmDist > 1.5 ? 1.50 : otmDist > 0.5 ? 1.00 : 0.60;
+      const capInt    = r.premTier * gammaDens;
+
+      // Dim 3 — DTE weight (handled in stack score globally, per-sweep uses tier)
+      const dteW = r.dte === 0 ? 1.00
+                 : r.dte === 1 ? 0.70
+                 : r.dte <= 5  ? 0.50 : 0.25;
+
+      // Dim 4 — Recency: 30-min half-life exponential decay
+      const recency = Math.exp(-r.ageMs / (30 * 60 * 1000));
+
+      // Moneyness directional weight
+      // OTM in sweep direction = pure directional intent
+      const abovePrice = r.strike > px;
+      const moneynessW = r.dir === 1
+        ? (abovePrice ? 1.00 : 0.30)   // call: OTM above = directional, ITM = likely closing
+        : (!abovePrice ? 1.00 : 0.20); // put:  OTM below = directional, OTM above = hedge
+
+      // Composite sweep score (non-linear product, not sum)
+      return urgency * capInt * dteW * recency * moneynessW;
+    }
+
+    // Accumulate fuel per direction
+    let callFuel = 0, putFuel = 0;
+    let callCount0 = 0, callCount1 = 0, callCount2p = 0;
+    let putCount0  = 0, putCount1  = 0, putCount2p  = 0;
+    let callPremSum = 0, putPremSum = 0;
+
+    const recentWindow = 20 * 60 * 1000;   // 20 min for recent sub-windows
+    const recentRows   = qualiRows.filter(r => r.ageMs <= recentWindow);
+    const priorRows    = qualiRows.filter(r => r.ageMs > recentWindow && r.ageMs <= WINDOW_MS);
+
+    qualiRows.forEach(r => {
+      const sc = scoreSweep(r);
+      if (r.dir === 1) {
+        callFuel += sc;
+        callPremSum += r.prem;
+        if (r.dte === 0) callCount0++;
+        else if (r.dte === 1) callCount1++;
+        else callCount2p++;
+      } else {
+        putFuel += sc;
+        putPremSum += r.prem;
+        if (r.dte === 0) putCount0++;
+        else if (r.dte === 1) putCount1++;
+        else putCount2p++;
+      }
+    });
+
+    const totalFuel    = callFuel + putFuel;
+    const qualifyingN  = qualiRows.length;
+
+    // Base directional vector
+    const baseVector = totalFuel > 0
+      ? clamp((callFuel - putFuel) / totalFuel, -1, 1) : 0;
+
+    // ── Interaction Term 3: DTE Stack Score ───────────────────────
+    // Which direction has more DTE layers represented?
+    function stackScore(c0, c1, c2p) {
+      const layers = (c0 > 0 ? 1 : 0) + (c1 > 0 ? 1 : 0) + (c2p > 0 ? 1 : 0);
+      return layers === 3 ? 1.00
+           : layers === 2 ? (c0 > 0 && c1 > 0 ? 0.70 : 0.60)
+           : layers === 1 ? (c0 > 0 ? 0.40 : c1 > 0 ? 0.35 : 0.25)
+           : 0.05;
+    }
+    const callStack = stackScore(callCount0, callCount1, callCount2p);
+    const putStack  = stackScore(putCount0,  putCount1,  putCount2p);
+    // Stack score in the direction of baseVector
+    const dominantStack = baseVector >= 0 ? callStack : putStack;
+
+    // ── Interaction Term 4: Sweep Acceleration ───────────────────
+    // Rate of qualifying sweeps in last 10 min vs prior 10 min
+    const w10 = 10 * 60 * 1000;
+    const recent10_call  = qualiRows.filter(r => r.dir === 1 && r.ageMs <= w10).length;
+    const recent10_put   = qualiRows.filter(r => r.dir === -1 && r.ageMs <= w10).length;
+    const prior10_call   = qualiRows.filter(r => r.dir === 1  && r.ageMs > w10 && r.ageMs <= w10*2).length;
+    const prior10_put    = qualiRows.filter(r => r.dir === -1 && r.ageMs > w10 && r.ageMs <= w10*2).length;
+
+    const accel_call = prior10_call > 0 ? (recent10_call - prior10_call) / prior10_call : (recent10_call > 0 ? 0.5 : 0);
+    const accel_put  = prior10_put  > 0 ? (recent10_put  - prior10_put)  / prior10_put  : (recent10_put  > 0 ? 0.5 : 0);
+    const sweepAccel = baseVector >= 0 ? accel_call : accel_put;
+
+    // ── Interaction Term 5: Moneyness Vector ─────────────────────
+    // Is flow migrating deeper OTM (building conviction) or toward ITM (covering)?
+    function avgOTM(rows) {
+      if (rows.length === 0 || px === 0) return 0;
+      return rows.reduce((s, r) => s + Math.abs(r.strike - px) / atr, 0) / rows.length;
+    }
+    const recentCalls = recentRows.filter(r => r.dir === 1);
+    const priorCalls  = priorRows.filter(r => r.dir === 1);
+    const recentPuts  = recentRows.filter(r => r.dir === -1);
+    const priorPuts   = priorRows.filter(r => r.dir === -1);
+
+    const moneynessVecCall = avgOTM(recentCalls) - avgOTM(priorCalls);
+    const moneynessVecPut  = avgOTM(recentPuts)  - avgOTM(priorPuts);
+    const moneynessVector  = baseVector >= 0 ? moneynessVecCall : moneynessVecPut;
+
+    // ── Size escalation ───────────────────────────────────────────
+    const recentDomPrem = (baseVector >= 0 ? recentCalls : recentPuts)
+      .map(r => r.prem).slice(-5);
+    const priorDomPrem  = (baseVector >= 0 ? priorCalls : priorPuts)
+      .map(r => r.prem).slice(-5);
+    const avgRecPrem = recentDomPrem.length ? recentDomPrem.reduce((a,v)=>a+v,0)/recentDomPrem.length : 0;
+    const avgPriPrem = priorDomPrem.length  ? priorDomPrem.reduce((a,v)=>a+v,0)/priorDomPrem.length   : 0;
+    const sizeEscalation = avgPriPrem > 0 ? (avgRecPrem - avgPriPrem) / avgPriPrem : 0;
+
+    // ── Urgency tensor (aggregate, 0DTE only) ─────────────────────
+    const urgencyTensor = qualiRows.filter(r => r.dte === 0)
+      .reduce((s, r) => s + r.prem * timeCompression * 0.001, 0);
+
+    // ── Coherence multiplier ──────────────────────────────────────
+    // Non-linear: all five terms amplify or dampen the base signal
+    const coherenceMult = clamp(
+      dominantStack
+        * (1 + clamp(sweepAccel,    -0.80, 1.0) * 0.50)
+        * (1 + clamp(sizeEscalation,-0.50, 1.0) * 0.30)
+        * (1 + clamp(moneynessVector,-1.0, 1.0) * 0.25),
+      0.05, 3.0
+    );
+
+    const coherentFuel = clamp(baseVector * coherenceMult, -1, 1);
+
+    // ── Net premium momentum ──────────────────────────────────────
+    let netPremScore = 0, netPremMomentum = 0, netPremLevel = 0;
+    if (netPremData && netPremData.length >= 4) {
+      FuelState.netPremHistory.push(
+        (parseFloat(netPremData[netPremData.length-1].net_call_premium) || 0)
+      );
+      if (FuelState.netPremHistory.length > 20) FuelState.netPremHistory.shift();
+
+      const hist = FuelState.netPremHistory;
+      const norm = Math.max(1, ...hist.map(Math.abs));
+      const recent3 = hist.slice(-3).reduce((a,v)=>a+v,0) / 3;
+      const prior6  = hist.length >= 9 ? hist.slice(-9,-3).reduce((a,v)=>a+v,0)/6 : recent3;
+      netPremLevel    = clamp(recent3 / norm, -1, 1);
+      netPremMomentum = clamp((recent3 - prior6) / norm, -1, 1);
+      netPremScore    = netPremLevel * 0.60 + netPremMomentum * 0.40;
+    }
+
+    // ── Dealer mechanics ──────────────────────────────────────────
+    let dealerScore = 0;
+    if (nopeData && nopeData.length > 0) {
+      const latest = nopeData[nopeData.length - 1];
+      const nope   = parseFloat(latest.nope || latest.value || 0);
+      // NOPE range varies — normalize to session context
+      dealerScore = clamp(nope / 100, -1, 1);
+    } else {
+      // Proxy: net premium momentum is correlated with dealer delta
+      dealerScore = netPremMomentum * 0.60;
+    }
+    const hasNOPE = !!(nopeData && nopeData.length > 0);
+
+    // ── Direction lock tracking ───────────────────────────────────
+    const currentDir = baseVector > 0.05 ? 1 : baseVector < -0.05 ? -1 : 0;
+    if (currentDir !== 0 && currentDir === FuelState.lockDir) {
+      FuelState.lockCount++;
+    } else if (currentDir !== 0 && currentDir !== FuelState.lockDir) {
+      FuelState.flipCount++;
+      if (FuelState.flipCount >= 3) {
+        FuelState.lockDir    = currentDir;
+        FuelState.lockCount  = 1;
+        FuelState.flipCount  = 0;
+      }
+    } else {
+      FuelState.flipCount = 0;
+    }
+    const sweepLocked = FuelState.lockCount >= 5;   // 5 readings = ~2.5 min at 30s
+    const dirFlip     = FuelState.flipCount >= 2;
+
+    // ── Fuel ignition state ───────────────────────────────────────
+    const expSignal  = sweepAccel > 0.15 && sizeEscalation > 0.10 && moneynessVector > 0.10;
+    const collapseRisk = sweepAccel < -0.20 && sizeEscalation < -0.10 && moneynessVector < -0.10;
+
+    let fuelState;
+    if (qualifyingN === 0) {
+      fuelState = 'QUIET';
+    } else if (dirFlip || (FuelState.flipCount > 0 && Math.abs(baseVector) > 0.30)) {
+      fuelState = 'COLLAPSED';
+    } else if (collapseRisk) {
+      fuelState = 'FADING';
+    } else if (sweepLocked && coherenceMult > 1.20 && sweepAccel >= 0) {
+      fuelState = 'BURNING';
+    } else if (expSignal && qualifyingN >= 3) {
+      fuelState = 'PRE_IGNITION';
+    } else if (sweepAccel < -0.20 || sizeEscalation < -0.15) {
+      fuelState = 'FADING';
+    } else {
+      fuelState = 'PRE_IGNITION';
+    }
+
+    // ── Fuel type (time horizon) ──────────────────────────────────
+    const totalCount = callCount0+callCount1+callCount2p+putCount0+putCount1+putCount2p;
+    const frac0DTE = totalCount > 0 ? (callCount0 + putCount0) / totalCount : 0;
+    const frac2pDTE = totalCount > 0 ? (callCount2p + putCount2p) / totalCount : 0;
+    const fuelType  = qualifyingN === 0 ? 'NONE'
+                    : frac0DTE > 0.70   ? 'TACTICAL'
+                    : frac2pDTE > 0.50  ? 'STRATEGIC'
+                    : 'MIXED';
+
+    // ── Final non-linear score ────────────────────────────────────
+    const netPremFactor = 1 + (Math.sign(netPremScore) === Math.sign(baseVector) && Math.abs(netPremScore) > 0.05 ? 0.15 : -0.05);
+    const dealerFactor  = 1 + (Math.sign(dealerScore)  === Math.sign(baseVector) && Math.abs(dealerScore)  > 0.05 ? 0.12 : -0.04);
+
+    const rawScore = fuelState === 'QUIET' || fuelState === 'COLLAPSED' ? 0
+      : clamp(coherentFuel * netPremFactor * dealerFactor, -1, 1);
+
+    FuelState.smoothScore = smooth(FuelState.smoothScore, rawScore, 0.25);
+    const finalScore = clamp(FuelState.smoothScore, -1, 1);
+
+    // ── Confidence ────────────────────────────────────────────────
+    let conf = fuelState === 'BURNING'      ? 0.75
+             : fuelState === 'PRE_IGNITION' ? 0.60
+             : fuelState === 'FADING'       ? 0.45
+             : fuelState === 'COLLAPSED'    ? 0.25
+             : 0.00;
+
+    if (dominantStack > 0.70) conf += 0.10;
+    if (coherenceMult > 1.5)  conf += 0.10;
+    const allAgree = Math.sign(netPremScore) === Math.sign(baseVector)
+                  && Math.sign(dealerScore)  === Math.sign(baseVector);
+    if (allAgree) conf += 0.05;
+    if (!hasNOPE)              conf -= 0.08;
+    if (qualifyingN < 3)       conf -= 0.10;
+    if (sweepLocked)           conf += 0.08;
+    conf = clamp(conf, 0, 1.0);
+
+    const state = fuelState === 'QUIET' || conf < 0.35 ? 'POSITION'
+                : finalScore >= 0.40 ? 'BULL'
+                : finalScore <= -0.40 ? 'BEAR'
+                : 'POSITION';
+
+    // Top qualifying sweep
+    const topSweep = qualiRows.length > 0
+      ? qualiRows.reduce((b, r) => (!b || r.prem > b.prem) ? r : b, null)
+      : null;
+
+    return {
+      score:    +finalScore.toFixed(3),
+      conf:     +conf.toFixed(3),
+      state,
+      fuelState,
+      fuelType,
+      // Five interaction terms
+      urgencyTensor:   +urgencyTensor.toFixed(1),
+      stackScore:      +dominantStack.toFixed(3),
+      coherenceMult:   +coherenceMult.toFixed(3),
+      sweepAccel:      +sweepAccel.toFixed(3),
+      sizeEscalation:  +sizeEscalation.toFixed(3),
+      moneynessVector: +moneynessVector.toFixed(3),
+      // Base signals
+      baseVector:      +baseVector.toFixed(3),
+      netPremScore:    +netPremScore.toFixed(3),
+      dealerScore:     +dealerScore.toFixed(3),
+      // State
+      sweepLocked,
+      collapseRisk,
+      expansionSignal: expSignal,
+      hasNOPE,
+      // Counts
+      sweepCount:  qualifyingN,
+      callFuel:    +callFuel.toFixed(2),
+      putFuel:     +putFuel.toFixed(2),
+      frac0DTE:    +frac0DTE.toFixed(3),
+      frac2pDTE:   +frac2pDTE.toFixed(3),
+      topSweep: topSweep ? {
+        premium: topSweep.prem,
+        type:    topSweep.dir > 0 ? 'CALL' : 'PUT',
+        strike:  topSweep.strike,
+        dte:     topSweep.dte,
+        ageMin:  +(topSweep.ageMs / 60000).toFixed(1),
+      } : null,
+      diagnostics: {
+        callCount: qualiRows.filter(r=>r.dir===1).length,
+        putCount:  qualiRows.filter(r=>r.dir===-1).length,
+        netPremLevel:    +netPremLevel.toFixed(3),
+        netPremMomentum: +netPremMomentum.toFixed(3),
+        lockCount:       FuelState.lockCount,
+        flipCount:       FuelState.flipCount,
+        accel_call:      +accel_call.toFixed(3),
+        accel_put:       +accel_put.toFixed(3),
+        callStack:       +callStack.toFixed(2),
+        putStack:        +putStack.toFixed(2),
+      },
+    };
+  } catch(e) {
+    log('SPYFUEL err: ' + e.message, 'err');
+    return null;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  SPYCOMMAND — Synthesis
+//
+//  Weaves SPYSHIP + SPYGRAVITY + SPYSTATIONS + SPYFUEL into
+//  three command outputs:
+//
+//    SPEED:       STOP | IDLE | THRUST | FULL
+//    DIRECTION:   CALL | PUT
+//    DESTINATION: nearest price attractor in travel direction
+//
+//  Plus ordered advisories from all four signals.
+//
+//  Signal weights:
+//    SPYGRAVITY  0.35  (field defines the space)
+//    SPYSHIP     0.25  (ship's current momentum)
+//    SPYSTATIONS 0.20  (structural context)
+//    SPYFUEL     0.20  (institutional commitment)
+// ═══════════════════════════════════════════════════════════
+
+// ── Destination finder ────────────────────────────────────────────
+function findDestination(direction, grav, sta, px, atr) {
+  if (!px || atr < 0.001) return null;
+  const targets = [];
+
+  if (direction === 'CALL') {
+    // Attractors ABOVE price in travel direction
+    (grav?.clusters || [])
+      .filter(c => c.dir > 0 && c.dynamics !== 'DISSOLVING')
+      .forEach(c => targets.push({
+        price: c.strike, dist: c.distATR,
+        type: 'GAMMA', quality: c.dynamics === 'BUILDING' ? 'strong' : 'normal',
+        label: 'γ ' + c.dynamics.slice(0,4),
+      }));
+    (grav?.lagrangePoints || [])
+      .filter(l => l.price > px)
+      .forEach(l => targets.push({
+        price: l.price, dist: l.distATR,
+        type: 'L1', quality: 'decision',
+        label: 'L1 ' + l.stability.slice(0,4),
+      }));
+    (sta?.allStations || [])
+      .filter(s => s.price > px
+        && (s.character === 'R2S' || s.character === 'BROKEN_UP'
+          || s.type === 'PDH' || s.type === 'ORB_H' || s.type === 'ROUND'))
+      .forEach(s => targets.push({
+        price: s.price, dist: s.distATR,
+        type: s.type, quality: s.character === 'R2S' ? 'strong' : 'normal',
+        label: s.type.replace('_',' '),
+      }));
+  } else {
+    // Attractors BELOW price
+    (grav?.clusters || [])
+      .filter(c => c.dir < 0 && c.dynamics !== 'DISSOLVING')
+      .forEach(c => targets.push({
+        price: c.strike, dist: c.distATR,
+        type: 'GAMMA', quality: c.dynamics === 'BUILDING' ? 'strong' : 'normal',
+        label: 'γ ' + c.dynamics.slice(0,4),
+      }));
+    (grav?.lagrangePoints || [])
+      .filter(l => l.price < px)
+      .forEach(l => targets.push({
+        price: l.price, dist: l.distATR,
+        type: 'L1', quality: 'decision',
+        label: 'L1 ' + l.stability.slice(0,4),
+      }));
+    (sta?.allStations || [])
+      .filter(s => s.price < px
+        && (s.character === 'S2R' || s.character === 'BROKEN_DOWN'
+          || s.type === 'PDL' || s.type === 'ORB_L' || s.type === 'ROUND'))
+      .forEach(s => targets.push({
+        price: s.price, dist: s.distATR,
+        type: s.type, quality: s.character === 'S2R' ? 'strong' : 'normal',
+        label: s.type.replace('_',' '),
+      }));
+  }
+
+  if (targets.length === 0) return null;
+  return targets.sort((a, b) => a.dist - b.dist)[0];
+}
+
+// ── Main synthesis ────────────────────────────────────────────────
+function computeSPYCOMMAND(ship, grav, sta, fuel, row) {
+  const px  = row?.quote?.last || 0;
+  const atr = row?.bars ? calcATR(row.bars, 14) : 1.0;
+
+  // Signal definitions with weights
+  const SIGNALS = [
+    { name: 'SHIP', s: ship, w: 0.25 },
+    { name: 'GRAV', s: grav, w: 0.35 },
+    { name: 'STA',  s: sta,  w: 0.20 },
+    { name: 'FUEL', s: fuel, w: 0.20 },
+  ];
+
+  // Active = not POSITION and conf ≥ 0.35
+  const active = SIGNALS.filter(sig =>
+    sig.s && sig.s.state !== 'POSITION' && sig.s.conf >= 0.35
+  );
+
+  // Weighted composite score and confidence
+  const wConfSum  = active.reduce((s, sig) => s + sig.w * sig.s.conf, 0);
+  const wTotalSum = SIGNALS.reduce((s, sig) => s + sig.w, 0);
+  const compScore = wConfSum > 0
+    ? active.reduce((s, sig) => s + sig.s.score * sig.w * sig.s.conf, 0) / wConfSum
+    : 0;
+  const compConf = SIGNALS.reduce((s, sig) =>
+    s + (sig.s ? sig.s.conf : 0) * sig.w, 0) / wTotalSum;
+
+  // Direction from weighted vote
+  const direction = compScore >= 0 ? 'CALL' : 'PUT';
+
+  // Conflict: bull and bear signals simultaneously active
+  const bullActive = active.filter(sig => sig.s.score >  0.10);
+  const bearActive = active.filter(sig => sig.s.score < -0.10);
+  const hasConflict = bullActive.length > 0 && bearActive.length > 0;
+
+  // ── Hard STOP gates ───────────────────────────────────────────
+  const stopGates = [];
+
+  if (grav?.fieldState === 'BOUNDED')
+    stopGates.push('BOUNDED field — equal mass above and below, no directional read');
+  if (fuel?.fuelState === 'COLLAPSED')
+    stopGates.push('FUEL COLLAPSED — institutional direction reversal detected');
+  if (active.length === 0)
+    stopGates.push('All signals POSITION — no directional conviction');
+
+  // SPYSHIP vs SPYGRAVITY direct conflict (ship fighting the field)
+  if (ship && grav
+    && ship.state !== 'POSITION' && grav.state !== 'POSITION'
+    && ship.state !== grav.state
+    && ship.conf >= 0.50 && grav.conf >= 0.55)
+    stopGates.push('SPYSHIP fighting SPYGRAVITY — price moving against gravitational field');
+
+  // Structural wall blocking direction of travel
+  if (direction === 'CALL' && sta?.wallApproach)
+    stopGates.push('RESISTANCE wall at $' + (sta?.nearest?.price?.toFixed(2)||'?') + ' blocking upside');
+  if (direction === 'PUT' && sta?.floorApproach && sta?.s2rActive)
+    stopGates.push('S2R floor at $' + (sta?.nearest?.price?.toFixed(2)||'?') + ' blocking downside');
+
+  // ── Speed classification ──────────────────────────────────────
+  let speed;
+  const nearL1 = (grav?.lagrangePoints || []).some(l => l.distATR < 0.40);
+
+  if (stopGates.length > 0) {
+    speed = 'STOP';
+  } else if (
+    active.length < 2 ||
+    hasConflict ||
+    fuel?.fuelState === 'QUIET' ||
+    compConf < 0.38 ||
+    nearL1
+  ) {
+    speed = 'IDLE';
+  } else if (
+    active.length >= 3 &&
+    compConf >= 0.62 &&
+    !hasConflict &&
+    (fuel?.fuelState === 'BURNING' || fuel?.fuelState === 'PRE_IGNITION') &&
+    grav?.fieldState === 'CLEAR_RUNWAY'
+  ) {
+    speed = 'FULL';
+  } else {
+    speed = 'THRUST';
+  }
+
+  // ── Destination ───────────────────────────────────────────────
+  const destination = findDestination(direction, grav, sta, px, atr);
+
+  // ── Advisories (ordered by severity) ─────────────────────────
+  const advisories = [];
+
+  // Escalate stop gates as advisories
+  stopGates.forEach(g => advisories.push({ level: 'STOP', text: g }));
+
+  // Wall effect
+  if (grav?.wallEffect)
+    advisories.push({ level: 'CAUTION',
+      text: 'Wall at $' + grav.dominantStrike + ' — break or bounce imminent' });
+
+  // Lagrange points within range
+  (grav?.lagrangePoints || []).filter(l => l.distATR < 1.5)
+    .forEach(l => advisories.push({ level: 'CAUTION',
+      text: 'L1 decision boundary at $' + l.price + ' [' + l.stability + '] — ' +
+            (l.distATR < 0.4 ? 'AT boundary' : l.distATR.toFixed(1) + ' ATR') }));
+
+  // Fuel fading or collapse risk
+  if (fuel?.fuelState === 'FADING')
+    advisories.push({ level: 'CAUTION',
+      text: 'Fuel fading — coherence ' + (fuel.coherenceMult?.toFixed(2)||'?') + '× declining' });
+  if (fuel?.collapseRisk)
+    advisories.push({ level: 'CAUTION',
+      text: 'Fuel collapse risk — accel + size + moneyness all negative' });
+
+  // Dissolving clusters in travel direction
+  (grav?.clusters || [])
+    .filter(c => c.dynamics === 'DISSOLVING'
+      && (direction === 'CALL' ? c.dir > 0 : c.dir < 0)
+      && c.distATR < 2.0)
+    .forEach(c => advisories.push({ level: 'CAUTION',
+      text: 'Expected dissolve at $' + c.strike + ' (' + c.distATR.toFixed(1) + ' ATR)' }));
+
+  // SPYGRAVITY transition signal
+  if (grav?.transitionSignal === 'REVERSAL')
+    advisories.push({ level: 'CAUTION',
+      text: 'GRAVITY: REVERSAL — persistence ' + (grav.persistenceScore?.toFixed(1)||'?') + ' (structural)' });
+  if (grav?.transitionSignal === 'PULLBACK')
+    advisories.push({ level: 'CAUTION',
+      text: 'GRAVITY: PULLBACK signal — ' + (grav.persistenceScore?.toFixed(1)||'?') + ' persistence' });
+
+  // Emerging clusters imminent
+  (grav?.emergingClusters || []).filter(e => e.imminent)
+    .forEach(e => advisories.push({ level: 'CAUTION',
+      text: '⚡ Forming cluster at $' + e.strike + ' — imminent significance' }));
+
+  // Info advisories
+  if (grav?.fieldState === 'CONTESTED')
+    advisories.push({ level: 'INFO',
+      text: 'Contested gravitational field — reduced confidence' });
+  if (nearL1)
+    advisories.push({ level: 'INFO', text: 'At gravitational decision boundary — binary snap pending' });
+  if (grav?.vacuumAhead)
+    advisories.push({ level: 'INFO',
+      text: 'Clear vacuum in travel direction — no friction to destination' });
+  if (fuel?.fuelState === 'PRE_IGNITION' && speed !== 'FULL')
+    advisories.push({ level: 'INFO', text: 'Fuel PRE_IGNITION — building toward BURNING' });
+  if (fuel?.sweepLocked)
+    advisories.push({ level: 'INFO',
+      text: 'Sweeps LOCKED ' + (direction === 'CALL' ? 'CALL' : 'PUT')
+          + ' — ' + (fuel.diagnostics?.lockCount||0) + ' consecutive readings' });
+  if (!fuel?.hasNOPE)
+    advisories.push({ level: 'INFO', text: 'Dealer: NOPE stub — using net premium proxy' });
+  if ((grav?.diagnostics?.frac0 || 0) > 0.80)
+    advisories.push({ level: 'INFO', text: '0DTE dominated field — gravity expires at 4pm ET' });
+  if (sta?.snapZone)
+    advisories.push({ level: 'INFO', text: 'Price in snap zone — at named level' });
+
+  // No advisories case
+  if (advisories.length === 0)
+    advisories.push({ level: 'INFO', text: 'All systems nominal' });
+
+  return {
+    speed,
+    direction,
+    destination,
+    advisories,
+    compScore:    +compScore.toFixed(3),
+    compConf:     +compConf.toFixed(3),
+    activeCount:  active.length,
+    hasConflict,
+    stopGates,
+    activeSignals: active.map(s => s.name),
+  };
+}
+
+// ── Speedometer canvas renderer ───────────────────────────────────
+function drawSpeedometer(speed) {
+  const canvas = document.getElementById('cmdGauge');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W   = canvas.offsetWidth  || 240;
+  const H   = canvas.offsetHeight || 130;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2;
+  const cy = H - 18;
+  const R  = Math.min(cx - 12, cy - 4);
+
+  // Background arc
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, Math.PI, 2 * Math.PI);
+  ctx.lineWidth = 14;
+  ctx.strokeStyle = '#1e201a';
+  ctx.stroke();
+
+  // Four colored zone arcs (π to 2π split into four equal quarters)
+  const zones = [
+    { from: Math.PI,           to: Math.PI * 1.25, color: '#ef4444' },  // STOP
+    { from: Math.PI * 1.25,    to: Math.PI * 1.50, color: '#fbbf24' },  // IDLE
+    { from: Math.PI * 1.50,    to: Math.PI * 1.75, color: '#86efac' },  // THRUST
+    { from: Math.PI * 1.75,    to: Math.PI * 2.00, color: '#4ade80' },  // FULL
+  ];
+  zones.forEach(z => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, z.from, z.to);
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = z.color + '99';
+    ctx.stroke();
+  });
+
+  // Tick marks at zone boundaries
+  [0, 0.25, 0.50, 0.75, 1.0].forEach(t => {
+    const a = Math.PI + t * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * (R - 10), cy + Math.sin(a) * (R - 10));
+    ctx.lineTo(cx + Math.cos(a) * (R + 2),  cy + Math.sin(a) * (R + 2));
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#4a4d3e';
+    ctx.stroke();
+  });
+
+  // Zone labels
+  ctx.font = `bold ${Math.max(8, Math.round(R * 0.11))}px "IBM Plex Mono", monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const labelDefs = [
+    { t: 0.125, label: 'STOP',   color: '#ef4444' },
+    { t: 0.375, label: 'IDLE',   color: '#fbbf24' },
+    { t: 0.625, label: 'THRUST', color: '#86efac' },
+    { t: 0.875, label: 'FULL',   color: '#4ade80' },
+  ];
+  labelDefs.forEach(d => {
+    const a  = Math.PI + d.t * Math.PI;
+    const lr = R * 0.64;
+    ctx.fillStyle = d.color;
+    ctx.fillText(d.label, cx + Math.cos(a) * lr, cy + Math.sin(a) * lr);
+  });
+
+  // Needle
+  const needleT = { STOP: 0.125, IDLE: 0.375, THRUST: 0.625, FULL: 0.875 }[speed] || 0.375;
+  const needleA = Math.PI + needleT * Math.PI;
+  const nColor  = { STOP:'#ef4444', IDLE:'#fbbf24', THRUST:'#86efac', FULL:'#4ade80' }[speed] || '#fbbf24';
+
+  // Needle shadow
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(needleA) * R * 0.85, cy + Math.sin(needleA) * R * 0.85);
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#00000066';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Needle
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(needleA) * R * 0.85, cy + Math.sin(needleA) * R * 0.85);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = nColor;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Center hub
+  ctx.beginPath();
+  ctx.arc(cx, cy, R * 0.09, 0, Math.PI * 2);
+  ctx.fillStyle = nColor;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy, R * 0.05, 0, Math.PI * 2);
+  ctx.fillStyle = '#0e0f0d';
+  ctx.fill();
+}
+
+// ── Render SPYCOMMAND ─────────────────────────────────────────────
+function renderSPYCOMMAND(cmd) {
+  if (!cmd) {
+    // No data yet — just update speed to IDLE
+    drawSpeedometer('IDLE');
+    return;
+  }
+
+  // Speed gauge
+  drawSpeedometer(cmd.speed);
+  const speedEl = $('cmd-speed-label');
+  if (speedEl) {
+    speedEl.textContent = cmd.speed;
+    speedEl.className = 'cmd-speed-state ' + cmd.speed.toLowerCase();
+  }
+
+  // Composite read
+  const compEl = $('cmd-composite');
+  if (compEl) {
+    const acts = cmd.activeSignals.join(' · ') || 'none';
+    compEl.textContent = 'score ' + (cmd.compScore >= 0 ? '+' : '') + cmd.compScore
+      + ' · conf ' + cmd.compConf.toFixed(2)
+      + (cmd.hasConflict ? ' · CONFLICT' : '')
+      + '\nactive: ' + acts;
+  }
+
+  // Direction
+  const callEl = $('cmd-dir-call');
+  const putEl  = $('cmd-dir-put');
+  if (callEl && putEl) {
+    callEl.className = 'cmd-dir-half cmd-dir-call ' + (cmd.direction === 'CALL' ? 'active' : 'inactive');
+    putEl.className  = 'cmd-dir-half cmd-dir-put '  + (cmd.direction === 'PUT'  ? 'active' : 'inactive');
+  }
+
+  // Destination bullseye
+  const bull = $('cmd-bullseye');
+  const destPx = $('cmd-dest-price');
+  const destTy = $('cmd-dest-type');
+  if (bull) {
+    bull.className = 'cmd-bullseye ' + cmd.direction.toLowerCase();
+  }
+  if (destPx && destTy) {
+    if (cmd.destination) {
+      destPx.textContent = '$' + cmd.destination.price.toFixed(2);
+      destTy.textContent = cmd.destination.label + ' · ' + cmd.destination.dist.toFixed(1) + 'atr';
+      destPx.style.color = cmd.direction === 'CALL' ? 'var(--bull2)' : 'var(--bear2)';
+    } else {
+      destPx.textContent = '$—';
+      destTy.textContent = 'no target identified';
+      destPx.style.color = 'var(--ink3)';
+    }
+  }
+
+  // Advisories
+  const advDiv = $('cmd-advisories');
+  if (advDiv) {
+    advDiv.innerHTML = cmd.advisories.slice(0, 8).map(a => {
+      const cls  = a.level === 'STOP' ? 'adv-stop' : a.level === 'CAUTION' ? 'adv-caution' : 'adv-info';
+      const icon = a.level === 'STOP' ? '⛔' : a.level === 'CAUTION' ? '⚠' : 'ℹ';
+      return `<div class="cmd-advisory ${cls}"><span class="adv-icon">${icon}</span>${a.text}</div>`;
+    }).join('');
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  DISPLAY
+// ═══════════════════════════════════════════════════════════
+function $(id) { return document.getElementById(id); }
+function sign(v) { return v >= 0 ? '+' : ''; }
+function fmtAge(ms) {
+  if (!isFinite(ms)) return '—';
+  if (ms < 1000) return ms + 'ms';
+  return (ms/1000).toFixed(1) + 's ago';
+}
+
+function renderBar(barId, valId, v, conf) {
+  const bar = $(barId); const val = $(valId);
+  if (!bar) return;
+  const pct = Math.abs(v) * 50;
+  if (v >= 0) { bar.style.left = '50%'; bar.style.right = ''; }
+  else        { bar.style.right = '50%'; bar.style.left = ''; }
+  bar.style.width      = pct + '%';
+  bar.style.background = v >= 0 ? 'var(--bull)' : 'var(--bear)';
+  bar.style.opacity    = 0.30 + conf * 0.70;
+  if (val) val.textContent = sign(v) + v.toFixed(2);
+}
+
+function drawChart(bars) {
+  const canvas = $('miniChart');
+  if (!canvas || !bars || bars.length < 2) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth * devicePixelRatio;
+  const H = 80 * devicePixelRatio;
+  canvas.width = W; canvas.height = H;
+  const recent = bars.slice(-60);
+  const lo = Math.min(...recent.map(b=>b.l));
+  const hi = Math.max(...recent.map(b=>b.h));
+  const range = hi - lo || 0.01;
+  const pxY = p => ((hi - p) / range) * (H-4) + 2;
+  const pxX = i => (i / (recent.length-1)) * W;
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle = '#4ade8088'; ctx.lineWidth = 1.5 * devicePixelRatio;
+  ctx.beginPath();
+  recent.forEach((b,i) => i===0 ? ctx.moveTo(pxX(i),pxY(b.c)) : ctx.lineTo(pxX(i),pxY(b.c)));
+  ctx.stroke();
+}
+
+function log(msg, cls='') {
+  const entries = $('log-entries');
+  if (!entries) return;
+  const ts = new Date().toLocaleTimeString('en-US',{hour12:false});
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.innerHTML = `<span class="ts">${ts}</span><span class="${cls}">${msg}</span>`;
+  entries.insertBefore(div, entries.firstChild);
+  while(entries.children.length > 100) entries.removeChild(entries.lastChild);
+}
+
+function clearLog() { $('log-entries').innerHTML = ''; }
+
+function exportLake() {
+  const blob = new Blob([Lake.export()], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'spycommand_lake_' + new Date().toISOString().slice(0,19) + '.json';
+  a.click();
+}
+
+function render(row) {
+  // Pulse
+  const p = $('pulse');
+  if (p) { p.className='pulse on'; setTimeout(()=>p.className='pulse off',400); }
+
+  // Lake status
+  $('lake-rows').textContent = Lake.count();
+  $('lake-age').textContent  = fmtAge(Lake.age());
+
+  // Fetch status
+  const fs = (cat, id) => {
+    const s = FetchState[cat];
+    const el = $(id); if (!el) return;
+    if (s.lastOk) { el.textContent = 'OK' + (s.barCount?' ('+s.barCount+'b)':s.count?' ('+s.count+')':''); el.className='lake-val ok'; }
+    else if (s.err) { el.textContent = s.err; el.className='lake-val err'; }
+    else            { el.textContent = '...';  el.className='lake-val warn'; }
+  };
+  fs('bars','fs-bars'); fs('pdhl','fs-pdhl'); fs('gamma','fs-gamma'); fs('flow','fs-flow');
+  fs('dealer','fs-dealer'); fs('dark','fs-dark'); fs('oi','fs-oi');
+  fs('stations','fs-stations');
+
+  // SPYSHIP
+  const ship = computeSPYSHIP(row);
+  if (ship) {
+    const cls = ship.state==='BULL'?'bull':ship.state==='BEAR'?'bear':'position';
+    $('ship-score').textContent = sign(ship.score)+ship.score.toFixed(3);
+    $('ship-score').className   = 'ship-score '+cls;
+    $('ship-state').textContent = ship.state;
+    $('ship-conf').textContent  = 'conf '+ship.conf.toFixed(2);
+    renderBar('bar-heading',  'val-heading',  ship.anchors.heading,  ship.anchors.headingConf);
+    renderBar('bar-momentum', 'val-momentum', ship.anchors.momentum, ship.anchors.momentumConf);
+    renderBar('bar-vpoc',     'val-vpoc',     ship.anchors.vpoc,     ship.anchors.vpocConf);
+    $('ship-heading-label').textContent = 'heading: '+ship.heading;
+    $('ship-vpoc-label').textContent    = 'vpoc:    '+ship.vpocState;
+    const d = ship.diag;
+    $('d-px').textContent      = d.px?.toFixed(2) || '—';
+    $('d-e8').textContent      = d.ema8?.toFixed(3) || '—';
+    $('d-e21').textContent     = d.ema21?.toFixed(3) || '—';
+    $('d-vpoc').textContent    = d.vpoc?.toFixed(2) || '—';
+    $('d-vpocGap').textContent = sign(d.vpocGap)+d.vpocGap?.toFixed(3);
+    $('d-vpocVel').textContent = sign(d.vpocVel)+d.vpocVel?.toFixed(3);
+    $('d-s8').textContent      = sign(d.slope8)+d.slope8?.toFixed(3);
+    $('d-s21').textContent     = sign(d.slope21)+d.slope21?.toFixed(3);
+    $('d-sc').textContent      = sign(d.spreadChg)+d.spreadChg?.toFixed(3);
+    $('d-atr').textContent     = d.atr?.toFixed(3) || '—';
+    $('d-between').textContent = d.betweenEMAs ? 'YES' : 'no';
+    $('d-cross').textContent   = d.crossoverActive ? 'YES' : 'no';
+    if (row.bars) drawChart(row.bars);
+  } else {
+    $('ship-score').textContent = '—';
+    $('ship-state').textContent = 'AWAITING DATA';
+    $('ship-conf').textContent  = row?.bars ? 'bars: '+row.bars.length : 'no bars';
+  }
+
+  // SPYGRAVITY
+  const grav = computeSPYGRAVITY(row);
+  if (grav) {
+    const gcls = grav.state==='BULL'?'bull':grav.state==='BEAR'?'bear':'position';
+    $('grav-score').textContent = sign(grav.score)+grav.score.toFixed(3);
+    $('grav-score').className   = 'ship-score '+gcls;
+    $('grav-state').textContent = grav.state;
+    $('grav-conf').textContent  = 'conf '+grav.conf.toFixed(2);
+    renderBar('bar-grav-field', 'val-grav-field', grav.netField,      grav.conf);
+    renderBar('bar-grav-rot',   'val-grav-rot',   grav.fieldRotation, grav.conf);
+    $('grav-field-state').textContent  = 'field: '    + grav.fieldState;
+    $('grav-0dte-state').textContent   = '0DTE: '     + grav.field0DTEstate;
+    $('grav-transition').textContent   = 'signal: '   + grav.transitionSignal;
+    const dd = grav.dominantStrike;
+    const ddyn = grav.dominantDyn;
+    const drole = grav.dominantRole;
+    $('grav-dominant').textContent = dd ? 'dom: $'+dd+' '+ddyn+' '+drole : '—';
+
+    // DTE composition bar text
+    const f0 = (grav.diagnostics.frac0*100).toFixed(0);
+    const f1 = (grav.diagnostics.frac1*100).toFixed(0);
+    const f2 = (grav.diagnostics.frac2*100).toFixed(0);
+    $('grav-dte-bar').textContent = '0DTE:'+f0+'% 1DTE:'+f1+'% 2DTE+:'+f2+'%'
+      + (grav.emergingClusters.some(e=>e.imminent)?' ⚡FORMING':'')
+      + (grav.lagrangePoints.some(l=>l.distATR<0.5)?' ◉L1':'')
+      + (grav.overlapZones.some(z=>z.distATR<0.5)?' ⊕OVR':'');
+
+    // Diagnostics
+    $('gd-comp').textContent    = sign(grav.compositeField)+grav.compositeField.toFixed(3);
+    $('gd-rot').textContent     = sign(grav.fieldRotation)+grav.fieldRotation.toFixed(3);
+    $('gd-persist').textContent = grav.persistenceScore.toFixed(2)
+      +' ('+Math.round(grav.diagnostics.frac0*100)+'/'
+      +Math.round(grav.diagnostics.frac1*100)+'/'
+      +Math.round(grav.diagnostics.frac2*100)+'%)';
+    $('gd-fte').textContent     = sign(grav.field0DTE)+grav.field0DTE.toFixed(2)
+      +' / '+sign(grav.field1DTE)+grav.field1DTE.toFixed(2)
+      +' / '+sign(grav.field2DTE)+grav.field2DTE.toFixed(2);
+    $('gd-adyn').textContent    = sign(grav.aboveDynAvg)+grav.aboveDynAvg.toFixed(3);
+    $('gd-bdyn').textContent    = sign(grav.belowDynAvg)+grav.belowDynAvg.toFixed(3);
+    $('gd-cnt').textContent     = grav.diagnostics.clusterCount;
+    $('gd-lagrange').textContent = grav.lagrangePoints.length > 0
+      ? grav.lagrangePoints.map(l => '$'+l.price+' '+l.stability.slice(0,4)+' '+l.distATR.toFixed(1)+'atr').join(' | ')
+      : 'none';
+    $('gd-overlap').textContent  = grav.overlapZones.length > 0
+      ? grav.overlapZones.map(z => '$'+z.price+' '+z.distATR.toFixed(1)+'atr').join(' | ')
+      : 'none';
+    $('gd-emerging').textContent = grav.emergingClusters.length > 0
+      ? grav.emergingClusters.map(e => '$'+e.strike+(e.imminent?' ⚡':'')).join(' ')
+      : 'none';
+    $('gd-flags').textContent    = [
+      grav.wallEffect  ? '⚠WALL'   : '',
+      grav.vacuumAbove ? '↑VACUUM'  : '',
+      grav.vacuumBelow ? '↓VACUUM'  : '',
+      grav.vacuumAhead ? '→CLEAR'   : '',
+    ].filter(Boolean).join(' ') || 'none';
+    // Lagrange point detail if any nearby
+    const lgNear = grav.lagrangePoints.filter(l => l.distATR < 1.0);
+    const lgDiv  = $('gd-lagrange-detail');
+    if (lgDiv) lgDiv.innerHTML = lgNear.map(l =>
+      'L1 $'+l.price+' ['+l.stability+'] ↓$'+l.strikeBelow+' ↑$'+l.strikeAbove
+    ).join('<br>');
+
+    // Cluster table
+    const cDiv = $('gd-clusters');
+    if (cDiv) {
+      cDiv.innerHTML = grav.clusters.map(c => {
+        const dir = c.dir > 0 ? '↑' : '↓';
+        const col = c.dir > 0 ? 'var(--bull2)' : 'var(--bear2)';
+        const dynC = c.dynamics==='BUILDING'?'var(--bull2)':c.dynamics==='DISSOLVING'?'var(--bear2)':'var(--ink3)';
+        return `<span style="color:${col}">${dir}$${c.strike}</span> `
+             + `<span style="color:${dynC}">${c.dynamics.slice(0,4)}</span> `
+             + `${c.distATR.toFixed(1)}atr [${c.role.slice(0,4)}]<br>`;
+      }).join('');
+    }
+  } else {
+    $('grav-score').textContent = '—';
+    $('grav-state').textContent = row?.gamma?.spot ? 'COMPUTING...' : 'NO GAMMA DATA';
+  }
+
+  // SPYSTATIONS — receives gravOutput for gravitational station positions
+  const sta = computeSPYSTATIONS(row, grav);
+  if (sta) {
+    const scls = sta.state==='BULL'?'bull':sta.state==='BEAR'?'bear':'position';
+    $('sta-score').textContent = sign(sta.score)+sta.score.toFixed(3);
+    $('sta-score').className   = 'ship-score '+scls;
+    $('sta-state').textContent = sta.state;
+    $('sta-conf').textContent  = 'conf '+sta.conf.toFixed(2);
+    // Nearest station bar
+    renderBar('bar-sta','val-sta',
+      sta.nearest ? (sta.nearest.distATR < 1 ? (sta.score || 0) : 0) : 0,
+      sta.conf);
+    // Nearest station detail
+    if (sta.nearest) {
+      const n = sta.nearest;
+      $('sta-nearest').textContent = n.type+' $'+n.price.toFixed(2)+' '+n.distATR.toFixed(2)+'atr';
+      const charCol = {
+        R2S:'var(--bull2)', SUPPORT:'var(--bull2)', BROKEN_UP:'var(--bull)',
+        S2R:'var(--bear2)', RESISTANCE:'var(--bear2)', BROKEN_DOWN:'var(--bear)',
+        UNTESTED:'var(--ink3)', EMERGING:'var(--drift)',
+      };
+      $('sta-character').textContent = n.character;
+      $('sta-character').style.color  = charCol[n.character] || 'var(--ink3)';
+    } else {
+      $('sta-nearest').textContent  = 'no active stations';
+      $('sta-character').textContent = '—';
+    }
+    // Flags
+    $('sta-flags').textContent = [
+      sta.r2sActive    ? '✓R2S'  : '',
+      sta.s2rActive    ? '✓S2R'  : '',
+      sta.wallApproach ? '⚠WALL' : '',
+      sta.floorApproach? '↑FLOOR': '',
+      sta.snapZone     ? '●SNAP' : '',
+    ].filter(Boolean).join(' ') || '—';
+    // Active station list
+    const sDiv = $('sta-list');
+    if (sDiv) {
+      sDiv.innerHTML = sta.allStations.slice(0,8).map(s => {
+        const cc = {
+          R2S:'var(--bull2)',SUPPORT:'var(--bull)',BROKEN_UP:'var(--bull)',
+          S2R:'var(--bear2)',RESISTANCE:'var(--bear)',BROKEN_DOWN:'var(--bear)',
+        }[s.character] || 'var(--ink3)';
+        const dir = s.price > (row?.quote?.last||0) ? '↑' : '↓';
+        return `<span style="color:${cc}">${dir}$${s.price.toFixed(2)}</span>`
+             + ` ${s.type.slice(0,4)} ${s.character.slice(0,4)} ${s.distATR.toFixed(1)}atr<br>`;
+      }).join('');
+    }
+    // Diagnostics
+    const d = sta.diagnostics;
+    $('sd-orb').textContent  = '$'+d.orbHigh.toFixed(2)+' / $'+d.orbLow.toFixed(2);
+    $('sd-pd').textContent   = '$'+d.pdh.toFixed(2)+' / $'+d.pdl.toFixed(2);
+    $('sd-sess').textContent = '$'+d.sessHigh.toFixed(2)+' / $'+d.sessLow.toFixed(2);
+    $('sd-cnt').textContent  = d.stationCount;
+    $('sd-active').textContent = d.activeCount;
+    $('sd-r2s').textContent  = (sta.r2sActive?'R2S ':'')+(sta.s2rActive?'S2R':'') || 'none';
+    $('sd-snap').textContent = sta.snapZone ? 'YES' : 'no';
+    $('sd-lagrange').textContent = d.nearLagrange ? 'NEAR' : 'none within 0.4atr';
+    $('sd-emerging').textContent = (grav?.emergingClusters||[]).filter(e=>e.imminent).length > 0
+      ? (grav.emergingClusters.filter(e=>e.imminent).map(e=>'$'+e.strike+'⚡').join(' '))
+      : 'none';
+  } else {
+    $('sta-score').textContent = '—';
+    $('sta-state').textContent = 'AWAITING DATA';
+  }
+
+  // SPYFUEL
+  const fuel = computeSPYFUEL(row);
+  if (fuel) {
+    const fcls = fuel.state==='BULL'?'bull':fuel.state==='BEAR'?'bear':'position';
+    $('fuel-score').textContent = sign(fuel.score)+fuel.score.toFixed(3);
+    $('fuel-score').className   = 'ship-score '+fcls;
+    $('fuel-state').textContent = fuel.state;
+    $('fuel-conf').textContent  = 'conf '+fuel.conf.toFixed(2);
+    renderBar('bar-fuel-coh',    'val-fuel-coh',    fuel.baseVector * fuel.coherenceMult, fuel.conf);
+    renderBar('bar-fuel-prem',   'val-fuel-prem',   fuel.netPremScore, fuel.conf * 0.8);
+    renderBar('bar-fuel-dealer', 'val-fuel-dealer', fuel.dealerScore,  fuel.conf * 0.7);
+
+    // Ignition state with color
+    const stateColors = {
+      BURNING:'var(--bull2)', PRE_IGNITION:'var(--bull)', FADING:'var(--drift)',
+      COLLAPSED:'var(--bear2)', QUIET:'var(--ink3)'
+    };
+    const ig = $('fuel-ignition');
+    if (ig) { ig.textContent = fuel.fuelState; ig.style.color = stateColors[fuel.fuelState]||'var(--ink3)'; }
+    $('fuel-type').textContent = 'type: '+fuel.fuelType
+      +' | coh: '+fuel.coherenceMult.toFixed(2)+'×';
+    // Top sweep
+    if (fuel.topSweep) {
+      const ts = fuel.topSweep;
+      $('fuel-top-sweep').textContent =
+        'top: '+(ts.type)+' $'+(ts.premium/1e6).toFixed(2)+'M $'+ts.strike+' '+ts.dte+'DTE '+ts.ageMin+'m ago';
+    } else {
+      $('fuel-top-sweep').textContent = 'no qualifying sweeps';
+    }
+    // Flags
+    $('fuel-flags').textContent = [
+      fuel.sweepLocked      ? '🔒LOCK'   : '',
+      fuel.expansionSignal  ? '⚡EXPAND' : '',
+      fuel.collapseRisk     ? '⚠FADE'   : '',
+      !fuel.hasNOPE         ? 'NOPE:prxy': '',
+    ].filter(Boolean).join(' ') || '—';
+    // Diagnostics
+    $('fd-coh').textContent    = fuel.coherenceMult.toFixed(3)+'×';
+    $('fd-stack').textContent  = fuel.stackScore.toFixed(3)
+      +' [C:'+fuel.diagnostics.callStack.toFixed(2)+' P:'+fuel.diagnostics.putStack.toFixed(2)+']';
+    $('fd-accel').textContent  = sign(fuel.sweepAccel)+fuel.sweepAccel.toFixed(3)
+      +' [C:'+sign(fuel.diagnostics.accel_call)+fuel.diagnostics.accel_call.toFixed(2)
+      +' P:'+sign(fuel.diagnostics.accel_put)+fuel.diagnostics.accel_put.toFixed(2)+']';
+    $('fd-size').textContent   = sign(fuel.sizeEscalation)+fuel.sizeEscalation.toFixed(3);
+    $('fd-money').textContent  = sign(fuel.moneynessVector)+fuel.moneynessVector.toFixed(3);
+    $('fd-urgency').textContent = fuel.urgencyTensor.toFixed(1);
+    $('fd-sweeps').textContent = fuel.sweepCount
+      +' (C:'+fuel.diagnostics.callCount+' P:'+fuel.diagnostics.putCount+')';
+    $('fd-prem').textContent   = sign(fuel.netPremScore)+fuel.netPremScore.toFixed(3)
+      +' lvl:'+sign(fuel.diagnostics.netPremLevel)+fuel.diagnostics.netPremLevel.toFixed(2)
+      +' mom:'+sign(fuel.diagnostics.netPremMomentum)+fuel.diagnostics.netPremMomentum.toFixed(2);
+    $('fd-lock').textContent   = 'n:'+fuel.diagnostics.lockCount
+      +' flip:'+fuel.diagnostics.flipCount
+      +(fuel.sweepLocked?' 🔒':'');
+    $('fd-dte').textContent    = Math.round(fuel.frac0DTE*100)+'% / '
+      +Math.round(fuel.frac2pDTE*100)+'%';
+  } else {
+    $('fuel-score').textContent = '—';
+    $('fuel-state').textContent = row?.flow?.alerts ? 'COMPUTING...' : 'NO FLOW DATA';
+  }
+
+  // SPYCOMMAND synthesis
+  const cmd = computeSPYCOMMAND(ship, grav, sta, fuel, row);
+  renderSPYCOMMAND(cmd);
+
+  // Log status every minute
+  if (Lake.count() % 12 === 0 && Lake.count() > 0) {
+    const sc  = ship ? ship.score.toFixed(3) : '?';
+    const st  = ship ? ship.state : '?';
+    const gc  = grav ? grav.score.toFixed(3) : '?';
+    const stc = sta  ? sta.score.toFixed(3)  : '?';
+    const fc  = fuel ? fuel.fuelState : '?';
+    const spd = cmd  ? cmd.speed : '?';
+    const dir = cmd  ? cmd.direction : '?';
+    const nb  = row?.bars?.length || 0;
+    log('rows='+Lake.count()+' CMD:'+spd+'/'+dir+' S:'+sc+'('+st+') G:'+gc+' F:'+fc+' bars='+nb);
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────
+log('SPYCOMMAND boot', 'ok');
+log('Proxy: ' + CFG.proxy);
+
+startFetching((row) => {
+  if (Lake.count() === 1) {
+    const nb = row?.bars?.length || 0;
+    const px = row?.quote?.last || '?';
+    log('First row — bars='+nb+' price='+px, nb>0?'ok':'warn');
+  }
+  render(row);
+});
+</script>
+</body>
+</html>
