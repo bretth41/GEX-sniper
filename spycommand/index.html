@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPYCOMMAND — Build Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #0e0f0d;
+  --paper:   #13140f;
+  --panel:   #181a14;
+  --border:  #2a2d22;
+  --border2: #363a2a;
+  --ink:     #e8e4d8;
+  --ink2:    #b4b09e;
+  --ink3:    #787468;
+  --bull:    #4ade80;
+  --bull2:   #22c55e;
+  --bear:    #f87171;
+  --bear2:   #ef4444;
+  --drift:   #fbbf24;
+  --dim:     #4a4d3e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  min-height: 100vh;
+  padding: 16px;
+}
+h1 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .20em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin-bottom: 16px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px;
+}
+.panel-title {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+/* SPYSHIP main score */
+.ship-score {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -.02em;
+  transition: color .4s;
+}
+.ship-score.bull  { color: var(--bull);  }
+.ship-score.bear  { color: var(--bear);  }
+.ship-score.drift { color: var(--drift); }
+.ship-state {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  margin-top: 4px;
+}
+.ship-conf {
+  font-size: 10px;
+  color: var(--ink3);
+  margin-top: 2px;
+}
+
+/* Anchor bars */
+.anchor-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.anchor-label {
+  font-size: 9px;
+  color: var(--ink3);
+  width: 64px;
+  flex-shrink: 0;
+}
+.anchor-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+.anchor-bar-fill {
+  position: absolute;
+  top: 0; height: 100%;
+  border-radius: 3px;
+  transition: width .4s, left .4s, background .4s;
+}
+.anchor-val {
+  font-size: 9px;
+  color: var(--ink2);
+  width: 36px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Data lake status */
+.lake-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+}
+.lake-row:last-child { border-bottom: none; }
+.lake-key { color: var(--ink3); }
+.lake-val { color: var(--ink2); font-weight: 600; }
+.ok  { color: var(--bull2); }
+.err { color: var(--bear2); }
+.warn { color: var(--drift); }
+
+/* Diagnostics */
+.diag-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  font-size: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.diag-row:last-child { border-bottom: none; }
+.diag-key { color: var(--ink3); }
+.diag-val { color: var(--ink2); }
+
+/* Log panel */
+#log-panel {
+  grid-column: 1 / -1;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.log-entry {
+  font-size: 9px;
+  color: var(--ink3);
+  padding: 2px 0;
+  border-bottom: 1px solid var(--border);
+}
+.log-entry .ts { color: var(--dim); margin-right: 6px; }
+.log-entry .ok { color: var(--bull2); }
+.log-entry .err { color: var(--bear2); }
+
+/* Pulse dot */
+.pulse { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+.pulse.on  { background: var(--bull2); animation: blink 1s step-end infinite; }
+.pulse.off { background: var(--bear2); }
+@keyframes blink { 50% { opacity: 0.2; } }
+
+/* Bar chart mini */
+canvas#miniChart { width: 100%; height: 80px; display: block; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<h1>
+  <span class="pulse off" id="pulse"></span>
+  SPYCOMMAND · Build Test · Fetch + SPYSHIP
+</h1>
+
+<div class="grid">
+
+  <!-- SPYSHIP main output -->
+  <div class="panel">
+    <div class="panel-title">SPYSHIP</div>
+    <div class="ship-score drift" id="ship-score">—</div>
+    <div class="ship-state" id="ship-state">DRIFT</div>
+    <div class="ship-conf" id="ship-conf">conf —</div>
+    <div style="margin-top:10px">
+      <div class="anchor-row">
+        <span class="anchor-label">Heading</span>
+        <div class="anchor-bar-wrap"><div class="anchor-bar-fill" id="bar-heading"></div></div>
+        <span class="anchor-val" id="val-heading">—</span>
+      </div>
+      <div class="anchor-row">
+        <span class="anchor-label">Momentum</span>
+        <div class="anchor-bar-wrap"><div class="anchor-bar-fill" id="bar-momentum"></div></div>
+        <span class="anchor-val" id="val-momentum">—</span>
+      </div>
+      <div class="anchor-row">
+        <span class="anchor-label">VPOC</span>
+        <div class="anchor-bar-wrap"><div class="anchor-bar-fill" id="bar-vpoc"></div></div>
+        <span class="anchor-val" id="val-vpoc">—</span>
+      </div>
+    </div>
+    <div style="margin-top:8px;font-size:9px;color:var(--ink3)" id="ship-heading-label">—</div>
+    <div style="font-size:9px;color:var(--ink3)" id="ship-vpoc-label">—</div>
+  </div>
+
+  <!-- SPYSHIP diagnostics -->
+  <div class="panel">
+    <div class="panel-title">SPYSHIP Diagnostics</div>
+    <div id="diag-rows">
+      <div class="diag-row"><span class="diag-key">price</span><span class="diag-val" id="d-px">—</span></div>
+      <div class="diag-row"><span class="diag-key">ema8</span><span class="diag-val" id="d-e8">—</span></div>
+      <div class="diag-row"><span class="diag-key">ema21</span><span class="diag-val" id="d-e21">—</span></div>
+      <div class="diag-row"><span class="diag-key">vpoc</span><span class="diag-val" id="d-vpoc">—</span></div>
+      <div class="diag-row"><span class="diag-key">vpocGap</span><span class="diag-val" id="d-vpocGap">—</span></div>
+      <div class="diag-row"><span class="diag-key">vpocVel</span><span class="diag-val" id="d-vpocVel">—</span></div>
+      <div class="diag-row"><span class="diag-key">slope8</span><span class="diag-val" id="d-s8">—</span></div>
+      <div class="diag-row"><span class="diag-key">slope21</span><span class="diag-val" id="d-s21">—</span></div>
+      <div class="diag-row"><span class="diag-key">spreadChg</span><span class="diag-val" id="d-sc">—</span></div>
+      <div class="diag-row"><span class="diag-key">atr</span><span class="diag-val" id="d-atr">—</span></div>
+      <div class="diag-row"><span class="diag-key">betweenEMAs</span><span class="diag-val" id="d-between">—</span></div>
+      <div class="diag-row"><span class="diag-key">crossoverActive</span><span class="diag-val" id="d-cross">—</span></div>
+    </div>
+    <canvas id="miniChart"></canvas>
+  </div>
+
+  <!-- Data lake status -->
+  <div class="panel">
+    <div class="panel-title">Data Lake Status</div>
+    <div class="lake-row">
+      <span class="lake-key">rows</span>
+      <span class="lake-val" id="lake-rows">0</span>
+    </div>
+    <div class="lake-row">
+      <span class="lake-key">age</span>
+      <span class="lake-val" id="lake-age">—</span>
+    </div>
+    <div style="margin-top:8px;font-size:9px;color:var(--ink3);margin-bottom:4px">Fetch status per category:</div>
+    <div class="lake-row">
+      <span class="lake-key">bars</span>
+      <span class="lake-val" id="fs-bars">—</span>
+    </div>
+    <div class="lake-row">
+      <span class="lake-key">gamma</span>
+      <span class="lake-val" id="fs-gamma">—</span>
+    </div>
+    <div class="lake-row">
+      <span class="lake-key">flow</span>
+      <span class="lake-val" id="fs-flow">—</span>
+    </div>
+    <div class="lake-row">
+      <span class="lake-key">dealer</span>
+      <span class="lake-val" id="fs-dealer">—</span>
+    </div>
+    <div class="lake-row">
+      <span class="lake-key">darkpool</span>
+      <span class="lake-val" id="fs-darkpool">—</span>
+    </div>
+    <div class="lake-row">
+      <span class="lake-key">oi</span>
+      <span class="lake-val" id="fs-oi">—</span>
+    </div>
+    <div class="lake-row">
+      <span class="lake-key">stations</span>
+      <span class="lake-val" id="fs-stations">—</span>
+    </div>
+    <div style="margin-top:10px">
+      <button onclick="exportLake()" style="background:var(--border2);border:none;color:var(--ink2);
+        padding:5px 10px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:9px;
+        cursor:pointer;letter-spacing:.06em">EXPORT LAKE</button>
+      <button onclick="clearLog()" style="background:var(--border2);border:none;color:var(--ink2);
+        padding:5px 10px;border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:9px;
+        cursor:pointer;letter-spacing:.06em;margin-left:6px">CLEAR LOG</button>
+    </div>
+  </div>
+
+  <!-- Event log -->
+  <div class="panel" id="log-panel">
+    <div class="panel-title">Event Log</div>
+    <div id="log-entries"></div>
+  </div>
+
+</div>
+
+<script src="config.js"></script>
+<script src="fetch.js"></script>
+<script src="spyship.js"></script>
+<script>
+// ── Helpers ───────────────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+
+function fmtAge(ms) {
+  if (!isFinite(ms)) return '—';
+  if (ms < 1000) return ms + 'ms';
+  return (ms/1000).toFixed(1) + 's';
+}
+
+function sign(v) { return v >= 0 ? '+' : ''; }
+
+// Render anchor bar (value -1 to +1)
+function renderBar(barId, valId, v, conf) {
+  const bar = $(barId);
+  const val = $(valId);
+  if (!bar) return;
+  const pct = Math.abs(v) * 50;
+  const isPos = v >= 0;
+  const color = isPos ? 'var(--bull)' : 'var(--bear)';
+  const opacity = 0.30 + conf * 0.70;
+  if (isPos) {
+    bar.style.left   = '50%';
+    bar.style.width  = pct + '%';
+    bar.style.right  = '';
+  } else {
+    bar.style.right  = '50%';
+    bar.style.width  = pct + '%';
+    bar.style.left   = '';
+  }
+  bar.style.background = color;
+  bar.style.opacity    = opacity;
+  if (val) val.textContent = sign(v) + v.toFixed(2);
+}
+
+// Mini price chart
+function drawMiniChart(bars) {
+  const canvas = $('miniChart');
+  if (!canvas || !bars || bars.length < 2) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth * window.devicePixelRatio;
+  const H = 80 * window.devicePixelRatio;
+  canvas.width = W; canvas.height = H;
+  const recent = bars.slice(-60);
+  const prices = recent.map(b => b.c);
+  const lo = Math.min(...prices);
+  const hi = Math.max(...prices);
+  const range = hi - lo || 0.01;
+  const px = (p) => ((hi - p) / range) * (H - 4) + 2;
+  const x  = (i) => (i / (recent.length - 1)) * W;
+  ctx.clearRect(0, 0, W, H);
+  ctx.strokeStyle = '#4ade8088';
+  ctx.lineWidth = 1.5 * window.devicePixelRatio;
+  ctx.beginPath();
+  recent.forEach((b, i) => {
+    if (i === 0) ctx.moveTo(x(i), px(b.c));
+    else ctx.lineTo(x(i), px(b.c));
+  });
+  ctx.stroke();
+}
+
+// Log entry
+function log(msg, cls = '') {
+  const entries = $('log-entries');
+  if (!entries) return;
+  const ts = new Date().toLocaleTimeString('en-US', {hour12:false});
+  const div = document.createElement('div');
+  div.className = 'log-entry';
+  div.innerHTML = `<span class="ts">${ts}</span><span class="${cls}">${msg}</span>`;
+  entries.insertBefore(div, entries.firstChild);
+  // Keep last 100
+  while (entries.children.length > 100) entries.removeChild(entries.lastChild);
+}
+
+function clearLog() { $('log-entries').innerHTML = ''; }
+
+function exportLake() {
+  const blob = new Blob([Lake.export()], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `spycommand_lake_${new Date().toISOString().slice(0,19)}.json`;
+  a.click();
+}
+
+// ── Render loop ───────────────────────────────────────────────────
+function render(row) {
+  // Pulse
+  const pulse = $('pulse');
+  if (pulse) {
+    pulse.className = 'pulse on';
+    setTimeout(() => pulse.className = 'pulse off', 400);
+  }
+
+  // Lake status
+  $('lake-rows').textContent = Lake.count();
+  $('lake-age').textContent  = fmtAge(Lake.age());
+
+  // Fetch state
+  for (const cat of ['bars','gamma','flow','dealer','darkpool','oi','stations']) {
+    const el = $('fs-' + cat);
+    if (!el) continue;
+    const fs = FetchState[cat];
+    if (fs.lastOk) {
+      el.textContent = 'OK';
+      el.className = 'lake-val ok';
+    } else if (fs.err) {
+      el.textContent = fs.err.slice(0, 20);
+      el.className = 'lake-val err';
+    } else {
+      el.textContent = '...';
+      el.className = 'lake-val warn';
+    }
+  }
+
+  // SPYSHIP
+  const ship = computeSPYSHIP(row);
+  if (ship) {
+    const score  = ship.score;
+    const state  = ship.state;
+    const cls    = state === 'BULL' ? 'bull' : state === 'BEAR' ? 'bear' : 'drift';
+
+    $('ship-score').textContent = sign(score) + score.toFixed(3);
+    $('ship-score').className   = 'ship-score ' + cls;
+    $('ship-state').textContent = state;
+    $('ship-conf').textContent  = 'conf ' + ship.conf.toFixed(2);
+
+    renderBar('bar-heading',  'val-heading',  ship.anchors.heading,  ship.anchors.headingConf);
+    renderBar('bar-momentum', 'val-momentum', ship.anchors.momentum, ship.anchors.momentumConf);
+    renderBar('bar-vpoc',     'val-vpoc',     ship.anchors.vpoc,     ship.anchors.vpocConf);
+
+    $('ship-heading-label').textContent = 'heading: ' + ship.heading;
+    $('ship-vpoc-label').textContent    = 'vpoc:    ' + ship.vpocState;
+
+    // Diagnostics
+    const d = ship.diagnostics;
+    $('d-px').textContent      = d.px?.toFixed(2)       || '—';
+    $('d-e8').textContent      = d.ema8?.toFixed(3)     || '—';
+    $('d-e21').textContent     = d.ema21?.toFixed(3)    || '—';
+    $('d-vpoc').textContent    = d.vpoc?.toFixed(2)     || '—';
+    $('d-vpocGap').textContent = sign(d.vpocGap) + d.vpocGap?.toFixed(3) || '—';
+    $('d-vpocVel').textContent = sign(d.vpocVel) + d.vpocVel?.toFixed(3) || '—';
+    $('d-s8').textContent      = sign(d.slope8)  + d.slope8?.toFixed(3)  || '—';
+    $('d-s21').textContent     = sign(d.slope21) + d.slope21?.toFixed(3) || '—';
+    $('d-sc').textContent      = sign(d.spreadChg) + d.spreadChg?.toFixed(3) || '—';
+    $('d-atr').textContent     = d.atr?.toFixed(3)      || '—';
+    $('d-between').textContent = d.betweenEMAs   ? 'YES' : 'no';
+    $('d-cross').textContent   = d.crossoverActive ? 'YES' : 'no';
+
+    if (row.bars) drawMiniChart(row.bars);
+  } else {
+    $('ship-score').textContent = '—';
+    $('ship-state').textContent = 'AWAITING DATA';
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────
+log('SPYCOMMAND boot — starting fetch cycle', 'ok');
+
+startFetching((row) => {
+  // Log key fetch events
+  const barsOk = row?.bars?.length > 0;
+  const gammaOk = row?.gamma?.spot?.length > 0;
+  if (Lake.count() === 1) {
+    log(`First row written. bars=${barsOk} gamma=${gammaOk}`, barsOk ? 'ok' : 'warn');
+  }
+  if (Lake.count() % 12 === 0) {
+    // Every minute, log a status line
+    const ship = computeSPYSHIP(row);
+    const sc   = ship ? ship.score.toFixed(3) : '?';
+    const st   = ship ? ship.state : '?';
+    log(`1-min mark: rows=${Lake.count()} ship=${sc} (${st}) bars=${row?.bars?.length||0}`);
+  }
+  render(row);
+});
+</script>
+</body>
+</html>
