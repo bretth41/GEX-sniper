@@ -1,0 +1,4364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SPYCOMMAND</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:     #0e0f0d;
+  --paper:  #13140f;
+  --panel:  #181a14;
+  --border: #2a2d22;
+  --ink:    #e8e4d8;
+  --ink2:   #b4b09e;
+  --ink3:   #787468;
+  --bull:   #4ade80;
+  --bull2:  #22c55e;
+  --bear:   #f87171;
+  --bear2:  #ef4444;
+  --drift:  #fbbf24;
+  --dim:    #4a4d3e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px; min-height: 100vh;
+  padding: 12px; display: flex; flex-direction: column; gap: 10px;
+}
+/* ── Shared panel ── */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px; padding: 12px;
+}
+.panel-title {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: .16em; text-transform: uppercase;
+  color: var(--ink3); margin-bottom: 8px;
+  border-bottom: 1px solid var(--border); padding-bottom: 5px;
+}
+/* ── Header ── */
+#header {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 10px; font-weight: 700; letter-spacing: .18em;
+  text-transform: uppercase; color: var(--ink3);
+}
+.pulse { display:inline-block; width:7px; height:7px; border-radius:50%; }
+.pulse.on  { background:var(--bull2); animation:blink 1s step-end infinite; }
+.pulse.off { background:var(--bear2); }
+@keyframes blink { 50%{opacity:.2;} }
+
+/* ── Row 1: SPYCOMMAND ── */
+#cmd-row {
+  background: var(--panel);
+  border: 1px solid var(--border); border-radius: 4px; padding: 16px;
+}
+#cmd-gauges {
+  display: flex; align-items: flex-start;
+  justify-content: space-around; gap: 16px;
+}
+.cmd-g-section { display:flex; flex-direction:column; align-items:center; gap:6px; }
+.cmd-g-label {
+  font-size:9px; font-weight:700; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink3);
+}
+canvas#cmdGauge { width:300px; height:158px; display:block; }
+.cmd-speed-state { font-size:18px; font-weight:700; letter-spacing:.10em; text-align:center; transition:color .4s; }
+.cmd-speed-state.stop   { color:var(--bear2); }
+.cmd-speed-state.idle   { color:var(--drift); }
+.cmd-speed-state.thrust { color:var(--bull); }
+.cmd-speed-state.full   { color:var(--bull2); }
+.cmd-composite { font-size:8px; color:var(--ink3); text-align:center; white-space:pre; margin-top:2px; }
+.cmd-dir-circle {
+  width:130px; height:130px; border-radius:50%;
+  overflow:hidden; border:2px solid var(--border); position:relative;
+}
+.cmd-dir-half {
+  position:absolute; width:100%; height:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; letter-spacing:.12em;
+  transition:background .4s, color .4s;
+}
+.cmd-dir-call { top:0; border-bottom:1px solid var(--border); }
+.cmd-dir-put  { bottom:0; }
+.cmd-dir-call.active  { background:#22c55e33; color:var(--bull2); }
+.cmd-dir-call.inactive{ background:var(--border); color:var(--ink3); }
+.cmd-dir-put.active   { background:#ef444433; color:var(--bear2); }
+.cmd-dir-put.inactive { background:var(--border); color:var(--ink3); }
+.cmd-bullseye {
+  width:130px; height:130px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  border:3px solid var(--border); position:relative;
+  box-shadow:0 0 0 7px var(--panel),0 0 0 12px var(--border),
+             0 0 0 19px var(--panel),0 0 0 24px var(--border);
+  transition:border-color .4s, box-shadow .4s;
+}
+.cmd-bullseye.call {
+  border-color:var(--bull2);
+  box-shadow:0 0 0 7px var(--panel),0 0 0 12px #22c55e44,
+             0 0 0 19px var(--panel),0 0 0 24px #22c55e22;
+}
+.cmd-bullseye.put {
+  border-color:var(--bear2);
+  box-shadow:0 0 0 7px var(--panel),0 0 0 12px #ef444444,
+             0 0 0 19px var(--panel),0 0 0 24px #ef444422;
+}
+.cmd-dest-price { font-size:16px; font-weight:700; text-align:center; }
+.cmd-dest-type  { font-size:8px; color:var(--ink3); text-align:center; margin-top:2px; }
+/* Advisory strip */
+#cmd-adv-strip {
+  display:flex; flex-wrap:wrap; gap:6px;
+  margin-top:14px; padding-top:10px;
+  border-top:1px solid var(--border);
+  min-height:28px;
+}
+.adv-badge {
+  font-size:9px; padding:3px 8px; border-radius:3px;
+  display:inline-flex; align-items:center; gap:4px;
+}
+.adv-badge.stop    { background:#ef444418; color:var(--bear2); border:1px solid #ef444433; }
+.adv-badge.caution { background:#fbbf2418; color:var(--drift); border:1px solid #fbbf2433; }
+.adv-badge.info    { background:#ffffff08; color:var(--ink3);  border:1px solid var(--border); }
+
+/* ── Row 2: Signal cards ── */
+#signals-row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.signal-card {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:4px; padding:12px;
+  display:flex; flex-direction:column; align-items:center; gap:5px;
+}
+.card-title {
+  font-size:9px; font-weight:700; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ink3); align-self:flex-start;
+}
+.tl-wrap { display:flex; flex-direction:column; gap:4px; align-items:center; margin:4px 0; }
+.tl-dot  { width:16px; height:16px; border-radius:50%; transition:background .3s, box-shadow .3s; }
+.tl-r.on  { background:#ef4444; box-shadow:0 0 8px #ef4444bb; }
+.tl-r.off { background:#3a1515; }
+.tl-a.mid { background:#fbbf2455; box-shadow:0 0 4px #fbbf2444; }
+.tl-a.on  { background:#fbbf24; box-shadow:0 0 8px #fbbf24bb; }
+.tl-a.off { background:#25200a; }
+.tl-g.on  { background:#4ade80; box-shadow:0 0 8px #4ade80bb; }
+.tl-g.off { background:#0f2a15; }
+.card-score { font-size:26px; font-weight:700; letter-spacing:-.02em; transition:color .4s; }
+.card-state { font-size:11px; font-weight:700; letter-spacing:.12em; }
+.card-conf-v{ font-size:9px; color:var(--ink3); }
+.card-vals  { font-size:9px; color:var(--ink3); text-align:center; line-height:1.5; white-space:pre; }
+
+/* ── Row 3: Visualizations ── */
+#viz-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.viz-panel {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:4px; padding:12px;
+}
+canvas#priceChart     { width:100%; height:200px; display:block; }
+canvas#periscopeChart { width:100%; display:block; }
+
+/* ── Row 4: Data tools ── */
+#data-row {
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:4px; padding:12px;
+}
+#data-tabs { display:flex; gap:8px; margin-bottom:10px; align-items:center; }
+.tab-btn {
+  background:var(--border); border:1px solid var(--border);
+  color:var(--ink2); padding:8px 18px; border-radius:3px;
+  font-family:'IBM Plex Mono',monospace; font-size:12px;
+  cursor:pointer; letter-spacing:.06em; transition:all .2s;
+  min-width:90px; text-align:center;
+}
+.tab-btn.active { background:#4ade8018; border-color:var(--bull2); color:var(--bull2); }
+.tab-btn.dl     { margin-left:auto; background:#4ade8010; border-color:#4ade8044; color:var(--bull); }
+#data-lake-view { overflow:auto; max-height:240px; }
+#data-log-view  { overflow-y:auto; max-height:240px; }
+.data-table { width:100%; border-collapse:collapse; font-size:9px; }
+.data-table th {
+  color:var(--ink3); font-weight:600; text-align:left;
+  padding:3px 6px; border-bottom:1px solid var(--border);
+  position:sticky; top:0; background:var(--panel); white-space:nowrap;
+}
+.data-table td { padding:3px 6px; border-bottom:1px solid var(--border); color:var(--ink2); white-space:nowrap; }
+.data-table .bull { color:var(--bull2); }
+.data-table .bear { color:var(--bear2); }
+.data-table .pos  { color:var(--drift); }
+.data-table .cmd-full   { color:var(--bull2); font-weight:700; }
+.data-table .cmd-thrust { color:var(--bull); }
+.data-table .cmd-idle   { color:var(--drift); }
+.data-table .cmd-stop   { color:var(--bear2); font-weight:700; }
+.data-empty { color:var(--ink3); font-size:10px; padding:8px; }
+.log-entry { font-size:9px; color:var(--ink3); padding:2px 0; border-bottom:1px solid var(--border); }
+.log-entry .ts  { color:var(--dim); margin-right:6px; }
+.log-entry .ok  { color:var(--bull2); }
+.log-entry .err { color:var(--bear2); }
+.log-entry .warn{ color:var(--drift); }
+
+/* ── Price info box ── */
+.cmd-price-box {
+  flex: 0 0 155px;
+  display: flex; flex-direction: column; justify-content: space-around;
+  padding-right: 16px; padding-top: 4px;
+}
+.price-item { display: flex; flex-direction: column; gap: 1px; }
+.pi-label { font-size: 8px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--ink3); }
+.pi-spy   { font-size: 28px; font-weight: 700; letter-spacing: -.02em; transition: color .4s; line-height: 1; }
+.pi-other { font-size: 19px; font-weight: 700; letter-spacing: -.02em; transition: color .4s; line-height: 1.1; }
+.pi-chg   { font-size: 9px; transition: color .4s; }
+/* ── CMD row more breathing room ── */
+#cmd-row { padding-top: 20px; }
+/* ── CMD gauges: 4 sections ── */
+#cmd-gauges { justify-content: flex-start; align-items: stretch; }
+canvas#cmdGauge { width: 260px; height: 138px; }
+/* ── CMD composite: horizontal, bigger ── */
+.cmd-composite { display: flex; gap: 12px; justify-content: center; font-size: 10px; color: var(--ink3); flex-wrap: wrap; }
+/* ── Direction + Destination: explicitly same size ── */
+.cmd-dir-circle { width: 116px; height: 116px; }
+.cmd-dir-call, .cmd-dir-put { font-size: 12px; }
+.cmd-bullseye { width: 116px; height: 116px; box-shadow: none;
+  border: 2px solid var(--border); position: relative; }
+.cmd-bullseye::before { content: ''; position: absolute;
+  width: 76%; height: 76%; border-radius: 50%; border: 2px solid var(--border); pointer-events: none; }
+.cmd-bullseye::after  { content: ''; position: absolute;
+  width: 50%; height: 50%; border-radius: 50%; border: 2px solid var(--border); pointer-events: none; }
+.cmd-bullseye.call { border-color: var(--bull2); }
+.cmd-bullseye.call::before { border-color: #4ade8066; }
+.cmd-bullseye.call::after  { border-color: #4ade8033; }
+.cmd-bullseye.put  { border-color: var(--bear2); }
+.cmd-bullseye.put::before  { border-color: #ef444466; }
+.cmd-bullseye.put::after   { border-color: #ef444433; }
+/* ── Signal cards: compact, horizontal traffic lights ── */
+.signal-card { padding: 8px 10px; gap: 3px; }
+.tl-wrap { flex-direction: row; gap: 5px; margin: 3px 0; }
+.tl-dot  { width: 11px; height: 11px; }
+.card-score { font-size: 20px; }
+.card-state { font-size: 10px; letter-spacing: .10em; }
+.card-conf-v{ font-size: 8px; }
+.card-vals  { font-size: 8px; line-height: 1.4; }
+/* ── Viz row: 3fr / 1fr, taller ── */
+#viz-row { grid-template-columns: 3fr 1fr; }
+canvas#priceChart { height: 280px; }
+
+/* ── Collapse controls ── */
+#collapse-controls { display: flex; gap: 8px; }
+.collapse-btn {
+  background: var(--border); border: 1px solid var(--border);
+  color: var(--ink3); padding: 4px 14px; border-radius: 3px;
+  font-family: 'IBM Plex Mono', monospace; font-size: 9px;
+  cursor: pointer; letter-spacing: .08em; transition: all .2s;
+}
+.collapse-btn.open { background: #4ade8015; border-color: var(--bull2)66; color: var(--bull); }
+/* Signal log table */
+.slog-table { width: 100%; border-collapse: collapse; font-size: 8px; }
+.slog-table th { color: var(--ink3); font-weight: 600; text-align: left;
+  padding: 2px 4px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--panel); white-space: nowrap; }
+.slog-table td { padding: 2px 4px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.slog-table .pl-pos { color: var(--bull2); }
+.slog-table .pl-neg { color: var(--bear2); }
+.slog-table .pl-na  { color: var(--dim); }
+#slog-table-wrap { overflow: auto; max-height: 240px; margin-bottom: 8px; }
+#slog-events-wrap { overflow-y: auto; max-height: 100px; border-top: 1px solid var(--border); padding-top: 6px; margin-top: 4px; }
+
+/* ── CMD row: compact, spread equally ── */
+#cmd-gauges { justify-content: space-evenly; }
+canvas#cmdGauge { width: 220px; height: 116px; }
+.cmd-g-label { font-size: 8px; }
+.cmd-dir-circle { width: 100px; height: 100px; }
+.cmd-dir-call, .cmd-dir-put { font-size: 11px; }
+.cmd-bullseye { width: 100px; height: 100px; }
+.cmd-dest-price { font-size: 13px; }
+.cmd-dest-type  { font-size: 7px; }
+.cmd-price-box  { flex: 0 0 120px; }
+.pi-spy   { font-size: 22px; }
+.pi-other { font-size: 15px; }
+.pi-chg   { font-size: 8px; }
+#cmd-row  { padding: 12px 16px 10px; }
+/* ── Chart controls ── */
+.chart-header { display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px; flex-wrap: wrap; gap: 4px; }
+.chart-controls { display: flex; align-items: center; gap: 3px; }
+.tf-btn { font-size: 9px; padding: 2px 6px; border-radius: 2px; cursor: pointer;
+  background: var(--border); color: var(--ink3); user-select: none; }
+.tf-btn.active { background: #4ade8022; color: var(--bull2); border: 1px solid var(--bull2)44; }
+.ctrl-btn { font-size: 10px; padding: 2px 5px; border-radius: 2px; cursor: pointer;
+  background: var(--border); color: var(--ink2); user-select: none; }
+.ctrl-btn:active { background: var(--dim); }
+.chart-sep { color: var(--dim); padding: 0 2px; font-size: 9px; }
+canvas#priceChart { touch-action: none; }
+
+/* ── Compact price box: horizontal items ── */
+.cmd-price-box  { flex: 0 0 auto; min-width:0; padding-right:12px; justify-content:space-evenly; }
+.price-item     { display:flex; flex-direction:row; align-items:baseline; gap:6px; }
+.pi-label       { font-size:7px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+                  color:var(--ink3); min-width:26px; flex-shrink:0; }
+.pi-spy         { font-size:18px !important; font-weight:700; line-height:1; }
+.pi-other       { font-size:13px !important; font-weight:700; line-height:1; }
+.pi-chg         { font-size:10px !important; white-space:nowrap; }
+/* ── Charts fill remaining vertical space ── */
+body            { height:100svh; overflow:hidden; }
+#viz-row        { flex:1; min-height:0; }
+.viz-panel      { display:flex; flex-direction:column; height:100%; }
+canvas#priceChart     { flex:1; min-height:0; width:100% !important; height:auto !important; }
+canvas#periscopeChart { flex:1; min-height:0; width:100% !important; height:auto !important; }
+
+/* ── Price box: narrow, left-aligned, smaller text ── */
+.cmd-price-box  { flex:0 0 148px !important; min-width:0 !important;
+                  align-items:flex-start !important; padding-right:10px; }
+.price-item     { flex-direction:row; align-items:baseline; gap:5px; }
+.pi-label       { min-width:30px; }
+.pi-spy         { font-size:16px !important; }
+.pi-other       { font-size:12px !important; }
+.pi-chg         { font-size:10px !important; }
+/* ── Gauge sections: each takes equal share of remaining space ── */
+.cmd-g-section  { flex:1 !important; justify-content:center; }
+/* ── Chart buttons: larger tap targets ── */
+.tf-btn         { font-size:12px !important; padding:6px 12px !important;
+                  min-width:40px !important; text-align:center; }
+.tf-btn.active  { font-weight:700; }
+.ctrl-btn       { font-size:14px !important; padding:6px 10px !important;
+                  min-width:34px !important; text-align:center; }
+.chart-sep      { padding:0 4px; font-size:12px; }
+.chart-controls { gap:4px !important; }
+/* ── Advisory strip: flex with DATA at far right ── */
+#cmd-adv-strip  { align-items:center; }
+.adv-data-btn   { margin-left:auto; flex-shrink:0;
+                  background:#4ade8010; border:1px solid var(--bull2)44;
+                  color:var(--bull); padding:4px 14px; border-radius:3px;
+                  font-family:'IBM Plex Mono',monospace; font-size:9px;
+                  cursor:pointer; letter-spacing:.06em; transition:all .2s; }
+.adv-data-btn.open { background:#4ade8025; border-color:var(--bull2); }
+/* ── Hide separate collapse controls ── */
+#collapse-controls { display:none !important; }
+
+/* ── Two advisory panel buttons ── */
+#adv-panel-btns { display:flex; gap:6px; margin-left:auto; flex-shrink:0; }
+.adv-data-btn   { margin-left:0 !important; }
+/* ── Data view title ── */
+.data-view-title { font-size:10px; font-weight:700; letter-spacing:.14em;
+  color:var(--ink3); text-transform:uppercase; align-self:center; }
+#data-tabs { display:flex; align-items:center; }
+
+/* ── Export modal ── */
+#export-modal { display:none; position:fixed; inset:0; background:#000000cc;
+  z-index:9999; align-items:center; justify-content:center; }
+#export-modal.open { display:flex; }
+.export-modal-box { background:var(--panel); border:1px solid var(--border);
+  border-radius:6px; padding:16px; width:90vw; max-width:700px; max-height:80vh;
+  display:flex; flex-direction:column; gap:10px; }
+.export-modal-title { font-size:10px; font-weight:700; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink3); }
+.export-modal-box textarea {
+  flex:1; min-height:200px; background:var(--bg); color:var(--ink2);
+  border:1px solid var(--border); border-radius:3px;
+  font-family:'IBM Plex Mono',monospace; font-size:9px;
+  padding:8px; resize:none; }
+.export-modal-actions { display:flex; gap:8px; }
+.export-modal-actions button { flex:1; padding:10px; font-size:11px;
+  background:var(--border); color:var(--ink); border:1px solid var(--dim);
+  border-radius:3px; cursor:pointer; font-family:'IBM Plex Mono',monospace; }
+.export-modal-actions .btn-share { background:#4ade8018; border-color:var(--bull2)66; color:var(--bull2); }
+.export-modal-hint { font-size:9px; color:var(--ink3); text-align:center; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <span class="pulse off" id="pulse"></span>
+  SPYCOMMAND
+</div>
+
+<!-- Row 1: SPYCOMMAND command center -->
+<div id="cmd-row">
+  <div id="cmd-gauges">
+
+    <!-- Price info box -->
+    <div class="cmd-price-box">
+      <div class="price-item">
+        <div class="pi-label">SPY</div>
+        <div class="pi-spy" id="pi-spy">$—</div>
+        <div class="pi-chg" id="pi-spy-chg">—</div>
+      </div>
+      <div class="price-item">
+        <div class="pi-label">VIX</div>
+        <div class="pi-other" id="pi-vix">—</div>
+        <div class="pi-chg" id="pi-vix-chg">—</div>
+      </div>
+      <div class="price-item">
+        <div class="pi-label">VPOC</div>
+        <div class="pi-other" id="pi-vpoc">$—</div>
+        <div class="pi-chg" id="pi-vpoc-chg">—</div>
+      </div>
+    </div>
+
+    <div class="cmd-g-section">
+      <div class="cmd-g-label">Speed</div>
+      <canvas id="cmdGauge"></canvas>
+      <div class="cmd-composite" id="cmd-composite">
+        <span id="cmd-c-score">score —</span>
+        <span id="cmd-c-conf">conf —</span>
+        <span id="cmd-c-active">active: none</span>
+      </div>
+    </div>
+
+    <div class="cmd-g-section">
+      <div class="cmd-g-label">Direction</div>
+      <div class="cmd-dir-circle">
+        <div class="cmd-dir-half cmd-dir-call inactive" id="cmd-dir-call">CALL</div>
+        <div class="cmd-dir-half cmd-dir-put  inactive" id="cmd-dir-put">PUT</div>
+      </div>
+    </div>
+
+    <div class="cmd-g-section">
+      <div class="cmd-g-label">Destination</div>
+      <div class="cmd-bullseye" id="cmd-bullseye">
+        <div>
+          <div class="cmd-dest-price" id="cmd-dest-price">$—</div>
+          <div class="cmd-dest-type"  id="cmd-dest-type">—</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div id="cmd-adv-strip">
+    <span class="adv-badge info">ℹ Awaiting signal data...</span>
+    <div id="adv-panel-btns">
+      <button class="adv-data-btn" id="btn-data" onclick="openPanel('lake')">▶ DATA</button>
+      <button class="adv-data-btn" id="btn-log"  onclick="openPanel('log')">▶ LOG</button>
+    </div>
+  </div>
+</div>
+
+<!-- Row 2: Signal cards -->
+<div id="signals-row">
+
+  <div class="signal-card">
+    <div class="card-title">SPYSHIP</div>
+    <div class="tl-wrap">
+      <div class="tl-dot tl-r off" id="ship-tl-r"></div>
+      <div class="tl-dot tl-a mid" id="ship-tl-a"></div>
+      <div class="tl-dot tl-g off" id="ship-tl-g"></div>
+    </div>
+    <div class="card-score" id="ship-score">—</div>
+    <div class="card-state" id="ship-state">—</div>
+    <div class="card-conf-v" id="ship-conf-v">—</div>
+    <div class="card-vals"  id="ship-vals">—</div>
+  </div>
+
+  <div class="signal-card">
+    <div class="card-title">SPYGRAVITY</div>
+    <div class="tl-wrap">
+      <div class="tl-dot tl-r off" id="grav-tl-r"></div>
+      <div class="tl-dot tl-a mid" id="grav-tl-a"></div>
+      <div class="tl-dot tl-g off" id="grav-tl-g"></div>
+    </div>
+    <div class="card-score" id="grav-score">—</div>
+    <div class="card-state" id="grav-state">—</div>
+    <div class="card-conf-v" id="grav-conf-v">—</div>
+    <div class="card-vals"  id="grav-vals">—</div>
+  </div>
+
+  <div class="signal-card">
+    <div class="card-title">SPYSTATIONS</div>
+    <div class="tl-wrap">
+      <div class="tl-dot tl-r off" id="sta-tl-r"></div>
+      <div class="tl-dot tl-a mid" id="sta-tl-a"></div>
+      <div class="tl-dot tl-g off" id="sta-tl-g"></div>
+    </div>
+    <div class="card-score" id="sta-score">—</div>
+    <div class="card-state" id="sta-state">—</div>
+    <div class="card-conf-v" id="sta-conf-v">—</div>
+    <div class="card-vals"  id="sta-vals">—</div>
+  </div>
+
+  <div class="signal-card">
+    <div class="card-title">SPYFUEL</div>
+    <div class="tl-wrap">
+      <div class="tl-dot tl-r off" id="fuel-tl-r"></div>
+      <div class="tl-dot tl-a mid" id="fuel-tl-a"></div>
+      <div class="tl-dot tl-g off" id="fuel-tl-g"></div>
+    </div>
+    <div class="card-score" id="fuel-score">—</div>
+    <div class="card-state" id="fuel-state">—</div>
+    <div class="card-conf-v" id="fuel-conf-v">—</div>
+    <div class="card-vals"  id="fuel-vals">—</div>
+  </div>
+
+</div>
+
+<!-- Row 3: Visualizations -->
+<div id="viz-row">
+  <div class="viz-panel">
+    <div class="chart-header">
+      <span class="panel-title" style="margin:0">Price · EMA8 · EMA21</span>
+      <div class="chart-controls">
+        <span class="tf-btn active" id="tf-1"  onclick="setChartTF(1)">1m</span>
+        <span class="tf-btn"        id="tf-2"  onclick="setChartTF(2)">2m</span>
+        <span class="tf-btn"        id="tf-5"  onclick="setChartTF(5)">5m</span>
+        <span class="tf-btn"        id="tf-15" onclick="setChartTF(15)">15m</span>
+        <span class="chart-sep">|</span>
+        <span class="ctrl-btn" onclick="chartZoom(-1)" title="Zoom in">+</span>
+        <span class="ctrl-btn" onclick="chartZoom(1)"  title="Zoom out">−</span>
+        <span class="chart-sep">|</span>
+        <span class="ctrl-btn" onclick="chartPan(20)"  title="Older">◀</span>
+        <span class="ctrl-btn" onclick="chartPan(-20)" title="Newer">▶</span>
+        <span class="ctrl-btn" onclick="chartReset()"  title="Reset">↺</span>
+      </div>
+    </div>
+    <canvas id="priceChart"></canvas>
+  </div>
+  <div class="viz-panel">
+    <div class="panel-title">GEX Periscope · ±$7 · refreshes 5 min</div>
+    <canvas id="periscopeChart"></canvas>
+  </div>
+</div>
+
+<!-- Collapse controls — DATA only -->
+<div id="collapse-controls" style="display:none"></div>
+
+<!-- Row 4: Data tools -->
+<div id="data-row" style="display:none">
+  <div id="data-tabs">
+    <span class="data-view-title" id="data-view-title">DATA LAKE</span>
+    <button class="tab-btn dl" id="btn-dl" onclick="downloadCurrent()">⬇ DOWNLOAD TSV</button>
+  </div>
+  <div id="data-lake-view">
+    <div class="data-empty">Collecting data...</div>
+  </div>
+  <div id="data-log-view" style="display:none">
+    <div id="slog-table-wrap">
+      <div class="data-empty" id="slog-empty">Signal log builds during market hours (1 entry/min)...</div>
+    </div>
+    <div id="slog-events-wrap">
+      <div id="log-entries"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+// ═══════════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════════
+const CFG = {
+  proxy:       'https://spy-edge-tradier-proxy.ddyq77hxwp.workers.dev',
+  symbol:      'SPY',
+  pollMs:      5000,
+  lakeMaxRows: 5000,
+  ema8Period:  8,
+  ema21Period: 21,
+  vpocTick:    0.25,
+  fetchTimeoutMs: 6000,   // manual timeout per fetch call
+  ship: {
+    bullThresh:  0.40,
+    bearThresh: -0.40,
+    confMin:     0.35,
+    smoother:    0.30,
+    betweenEmasConfCap:  0.40,
+    crossoverConfCap:    0.35,
+    crossoverBars:       5,
+    vpocRejectionThresh: 0.12,
+    headingWeight:       0.40,
+    momentumWeight:      0.35,
+    vpocWeight:          0.25,
+    vpocRejectionWeight: 0.50,
+  },
+  endpoints: {
+    // ── Tradier (price data) ──────────────────────────────
+    bars:         '/tradier/v1/markets/timesales?symbol=SPY&interval=1min&session_filter=all',
+    vix:          '/tradier/v1/markets/quotes?symbols=VIX&greeks=false',
+    pdhl:         '/tradier/v1/markets/history?symbol=SPY&interval=daily&start=',
+    quote:        '/tradier/v1/markets/quotes?symbols=SPY&greeks=false',
+    // ── Unusual Whales (confirmed from API docs Apr 16-17 2026) ──
+    // Gamma
+    gexSpot:      '/uw/api/stock/SPY/spot-exposures/strike',
+    // gexByExpiry built dynamically in fetchGamma() with expirations[] params
+    // Flow
+    flow:         '/uw/api/option-trades/flow-alerts?ticker_symbol=SPY&limit=100',
+    flowByExpiry: '/uw/api/stock/SPY/flow-per-expiry',
+    // Dealer
+    netPrem:      '/uw/api/stock/SPY/net-prem-ticks',
+    nope:         '/uw/api/stock/SPY/nope',
+    marketTide:   '/uw/api/market/market-tide',
+    // Dark / Lit (lit-flow base path is /api/lit-flow/ not /api/stock/)
+    darkpool:     '/uw/api/darkpool/SPY',
+    litflow:      '/uw/api/lit-flow/SPY',
+    // Volume + OI per expiry (replaces separate oi-per-expiry — includes volume for activity ratio)
+    volOIExpiry:  '/uw/api/stock/SPY/option/volume-oi-expiry',
+    oiByStrike:   '/uw/api/stock/SPY/oi-per-strike',
+    oiByExpiry:   '/uw/api/stock/SPY/oi-per-expiry',
+    oiChange:     '/uw/api/stock/SPY/oi-change?limit=50',
+    // Stations
+    maxPain:      '/uw/api/stock/SPY/max-pain',
+    // Stock state — market session, total volume, prev close
+    stockState:   '/uw/api/stock/SPY/stock-state',
+    // Greek flow — 0DTE per-minute dealer hedge activity (expiry date appended dynamically)
+    // greekFlow: built dynamically in fetchGamma() as greekFlowURL
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+//  DATA LAKE + TIERED FETCH LAYER
+//
+//  Fetch intervals by category:
+//    5s  — bars, quote      (SPYSHIP needs fresh price every cycle)
+//    30s — gamma, flow      (meaningful change every ~30s)
+//    60s — dealer, dark     (slower moving)
+//   120s — oi, stations     (barely changes intraday)
+//
+//  One lake row written every 5s with latest known values.
+//  Signals read from Lake — never fetch directly.
+//  Add a new category: add to INTERVALS, Cache, and one fetch fn.
+// ═══════════════════════════════════════════════════════════
+
+const INTERVALS = {
+  bars:     5_000,         // Tradier bars+quote+VIX — every 5s
+  pdhl:     86_400_000,    // Tradier PDH/PDL — once per day
+  gamma:    30_000,        // spot GEX + by-expiry GEX — every 30s
+  flow:     30_000,        // flow alerts + flow by expiry — every 30s
+  dealer:   60_000,        // netPrem + NOPE + marketTide — every 60s
+  dark:     60_000,        // darkpool + lit flow — every 60s
+  oi:       120_000,       // vol+OI per expiry + OI by strike — every 2 min
+  stations: 300_000,       // max pain — every 5 min
+  state:    60_000,        // stock state (market_time, total_volume) — every 60s
+  oiStruct: 7_200_000,    // OI structural data (change, per-expiry, per-strike) — every 2h + boot
+};
+
+// Cache: last fetched data + timestamp per category
+const Cache = {
+  bars:     { data: null, lastFetched: 0 },
+  pdhl:     { data: null, lastFetched: 0 },
+  gamma:    { data: null, lastFetched: 0 },
+  flow:     { data: null, lastFetched: 0 },
+  dealer:   { data: null, lastFetched: 0 },
+  dark:     { data: null, lastFetched: 0 },
+  oi:       { data: null, lastFetched: 0 },
+  stations: { data: null, lastFetched: 0 },
+  state:    { data: null, lastFetched: 0 },
+  oiStruct: { data: null, lastFetched: 0 },
+};
+
+// FetchState: for display only — not used for logic
+const FetchState = {
+  bars:     { lastOk: false, barCount: 0, err: null },
+  pdhl:     { lastOk: false, err: null },
+  gamma:    { lastOk: false, err: null },
+  flow:     { lastOk: false, count: 0,   err: null },
+  dealer:   { lastOk: false, err: null },
+  dark:     { lastOk: false, err: null },
+  oi:       { lastOk: false, err: null },
+  stations: { lastOk: false, err: null },
+  state:    { lastOk: false, err: null },
+  oiStruct: { lastOk: false, err: null },
+};
+
+const DataLake = [];
+
+const Lake = {
+  latest() { return DataLake[DataLake.length - 1] || null; },
+  last(n)  { return DataLake.slice(-n); },
+  since(ms){ const t = Date.now()-ms; return DataLake.filter(r=>r.ts>=t); },
+  count()  { return DataLake.length; },
+  age()    { const r=this.latest(); return r ? Date.now()-r.ts : Infinity; },
+  export() { return JSON.stringify(DataLake); },
+};
+
+// ── Fetch helpers ─────────────────────────────────────────────────
+
+function fetchWithTimeout(url, ms) {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { signal: controller.signal })
+    .then(r  => { clearTimeout(tid); return r; })
+    .catch(e => { clearTimeout(tid); throw e; });
+}
+
+async function safeFetch(path, category) {
+  try {
+    const r = await fetchWithTimeout(CFG.proxy + path, CFG.fetchTimeoutMs);
+    if (!r.ok) {
+      FetchState[category].err    = 'HTTP ' + r.status;
+      FetchState[category].lastOk = false;
+      return null;
+    }
+    const d = await r.json();
+    FetchState[category].lastOk = true;
+    FetchState[category].err    = null;
+    return d;
+  } catch(e) {
+    FetchState[category].err    = e.name === 'AbortError' ? 'timeout' : e.message.slice(0,30);
+    FetchState[category].lastOk = false;
+    return null;
+  }
+}
+
+// ── Category fetch functions ──────────────────────────────────────
+// Each returns the data object for its category.
+// Called only when the category interval has elapsed.
+
+async function fetchBars() {
+  const [barsRaw, quoteRaw, vixRaw] = await Promise.all([
+    safeFetch(CFG.endpoints.bars,  'bars'),
+    safeFetch(CFG.endpoints.quote, 'bars'),
+    safeFetch(CFG.endpoints.vix,   'bars'),
+  ]);
+  let bars = null, quote = null, vix = null;
+  if (barsRaw) {
+    const raw = barsRaw?.series?.data;
+    if (Array.isArray(raw) && raw.length > 0) {
+      bars = raw.map(b => ({
+        ts:      new Date(b.time + ' GMT-0400').getTime(), // treat Tradier time as EDT
+        timeStr: b.time,   // keep original for ORB detection (timezone-safe)
+        o:  parseFloat(b.open)   || 0,
+        h:  parseFloat(b.high)   || 0,
+        l:  parseFloat(b.low)    || 0,
+        c:  parseFloat(b.close)  || 0,
+        v:  parseFloat(b.volume) || 0,
+      })).filter(b => b.c > 0);
+      FetchState.bars.barCount = bars.length;
+      FetchState.bars.lastOk   = true;
+    }
+  }
+  // After hours: bars may be empty — preserve last valid session bars for signals
+  if (!bars || bars.length === 0) {
+    bars = Cache.bars.data?.bars || null;
+    if (bars) FetchState.bars.barCount = bars.length; // keep count display accurate
+  }
+  if (quoteRaw) {
+    const q = quoteRaw?.quotes?.quote;
+    if (q) quote = {
+      last:   parseFloat(q.last)   || 0,
+      bid:    parseFloat(q.bid)    || 0,
+      ask:    parseFloat(q.ask)    || 0,
+      change: parseFloat(q.change) || 0,
+      volume: parseFloat(q.volume) || 0,
+    };
+  }
+  if (vixRaw) {
+    const v = vixRaw?.quotes?.quote;
+    if (v) vix = {
+      last:   parseFloat(v.last)   || 0,
+      change: parseFloat(v.change) || 0,
+    };
+  }
+  return { bars, quote, vix };
+}
+
+async function fetchPDHL() {
+  // Fetch prior 2 daily bars to get PDH/PDL — fires once per day at boot
+  const { dateStr } = etNow ? etNow() : { dateStr: new Date().toISOString().slice(0,10) };
+  // Request last 5 trading days to ensure we get yesterday even after weekends
+  const startDate = new Date(dateStr);
+  startDate.setDate(startDate.getDate() - 7);
+  const startStr = startDate.toISOString().slice(0,10);
+  const d = await safeFetch(CFG.endpoints.pdhl + startStr, 'pdhl');
+  if (!d) return null;
+  // Tradier history: { history: { day: [...] } } — array of {date,open,high,low,close}
+  const days = d?.history?.day;
+  if (!Array.isArray(days) || days.length < 2) return null;
+  // Sort by date, get the most recent completed session (not today)
+  const sorted = [...days].sort((a,b) => a.date < b.date ? -1 : 1);
+  const prior = sorted[sorted.length - 1]; // most recent prior day
+  if (!prior) return null;
+  FetchState.pdhl.lastOk = true;
+  return {
+    pdh:  parseFloat(prior.high)  || 0,
+    pdl:  parseFloat(prior.low)   || 0,
+    pdc:  parseFloat(prior.close) || 0,
+    date: prior.date,
+  };
+}
+
+// ── Session phase context — computed once per render cycle ─────────
+// Passed to every signal and synthesis. Single source of truth for time.
+function buildTimeCtx(marketTime) {
+  const { hour: etHour, minute: etMinute, dateStr: todayStr } = etNow();
+  const isExpiryDay = isSPYExpiryDay(todayStr);
+  const isRegular   = marketTime === 'regular' || marketTime === 'unknown';
+  const isPreMkt    = marketTime === 'premarket';
+  const isPostMkt   = marketTime === 'postmarket';
+
+  // Session phase — drives signal reliability and synthesis weights
+  let sessionPhase;
+  if (!isRegular)          sessionPhase = isPreMkt ? 'PREMARKET' : 'POSTMARKET';
+  else if (etHour < 9.75)  sessionPhase = 'OPEN_AUCTION';   // 9:30–9:45 — volatile
+  else if (etHour < 11.50) sessionPhase = 'MORNING';        // 9:45–11:30 — full signal
+  else if (etHour < 13.50) sessionPhase = 'MIDDAY';         // 11:30–13:30 — pin forming
+  else if (etHour < 15.00) sessionPhase = 'AFTERNOON';      // 13:30–15:00 — GRAV/STA dominate
+  else                     sessionPhase = 'CLOSING';         // 15:00–16:00 — OPEX mechanics
+
+  const isPreClose = etHour >= 15.00;
+  const isMOC      = etHour >= 15.45;   // market-on-close flows
+  const dteW       = dteWeights(etHour, isExpiryDay);
+
+  return {
+    etHour, etMinute, todayStr,
+    isExpiryDay, isRegular, isPreMkt, isPostMkt,
+    sessionPhase, isPreClose, isMOC,
+    dteW,
+  };
+}
+
+// ── SPY expiry date helpers ───────────────────────────────────────
+// SPY has 0DTE on all weekdays Mon–Fri.
+// Returns next N SPY expiry dates starting from (and including) today if it's an expiry day.
+function nextSPYExpiries(todayStr, count) {
+  const expiries = [];
+  const d = new Date(todayStr + 'T12:00:00Z');
+  while (expiries.length < count) {
+    const dow = d.getUTCDay();
+    if (dow >= 1 && dow <= 5) expiries.push(d.toISOString().slice(0, 10));
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return expiries; // [0DTE_date, 1DTE_date, 2DTE_date, ...]
+}
+
+async function fetchGamma() {
+  // Fetch 3 explicit SPY expiry layers for per-expiry DTE-weighted cluster build.
+  // Also fetch 0DTE greek flow (per-minute dealer hedge activity) on expiry days.
+  const { dateStr: today } = etNow();
+  const expiries = nextSPYExpiries(today, 3); // [0DTE, 1DTE, 2DTE]
+  const expiryParams = expiries.map(e => 'expirations[]=' + e).join('&');
+  const byExpiryURL  = CFG.endpoints.gexSpot.replace('/strike', '/expiry-strike') + '?' + expiryParams;
+
+  // Greek flow: per-minute dir_delta_flow for 0DTE — only available on expiry days
+  const greekFlowURL = isSPYExpiryDay(today)
+    ? '/uw/api/stock/SPY/greek-flow/' + expiries[0]
+    : null;
+
+  const fetches = [
+    safeFetch(CFG.endpoints.gexSpot, 'gamma'),
+    safeFetch(byExpiryURL,           'gamma'),
+    greekFlowURL ? safeFetch(greekFlowURL, 'gamma') : Promise.resolve(null),
+  ];
+  const [spot, byExpiry, greekFlow] = await Promise.all(fetches);
+  return {
+    spot:      spot?.data      || null,
+    byExpiry:  byExpiry?.data  || null,
+    greekFlow: greekFlow?.data || null,  // [{dir_delta_flow, total_delta_flow, timestamp, ...}]
+    expiries,
+  };
+}
+
+async function fetchFlow() {
+  // flow-alerts: per-contract sweep alerts (enriched at ingestion)
+  // flow-per-expiry: aggregated premium/volume/trades per expiry (DTE distribution)
+  const [alertsRaw, byExpiryRaw] = await Promise.all([
+    safeFetch(CFG.endpoints.flow,         'flow'),
+    safeFetch(CFG.endpoints.flowByExpiry, 'flow'),
+  ]);
+  const raw = alertsRaw?.data || null;
+  if (raw) FetchState.flow.count = raw.length;
+
+  const nowMs    = Date.now();
+  const { dateStr: todayStr } = etNow();
+
+  const annotated = (raw || []).map(row => {
+    const dte      = calcDTE ? calcDTE(row.expiry || '', todayStr) : 99;
+    const prem     = Math.abs(parseFloat(row.total_premium) || 0);
+    const ageMs    = nowMs - new Date(row.created_at || 0).getTime();
+    const hasSweep = !!(row.has_sweep);
+    const qualifying = prem >= 50000 && (hasSweep || prem >= 200000) && dte <= 5;
+    const type     = String(row.type || '').toLowerCase();
+    const dir      = type === 'call' ? 1 : type === 'put' ? -1 : 0;
+    const premTier = prem >= 5_000_000 ? 1.00
+                   : prem >= 1_000_000 ? 0.85
+                   : prem >= 200_000   ? 0.65
+                   : prem >= 50_000    ? 0.35 : 0;
+    return { ...row, dte, ageMs, qualifying, dir,
+             strike: parseFloat(row.strike) || 0, prem, premTier };
+  }).filter(r => r.dir !== 0);
+
+  return {
+    alerts:    annotated,
+    byExpiry:  byExpiryRaw?.data || null,  // [{expiry, call_premium, put_premium, call_volume, ...}]
+    fetchedAt: nowMs,
+  };
+}
+
+async function fetchDealer() {
+  // net-prem-ticks: each tick is a PER-MINUTE INCREMENT — must cumulate for session totals.
+  // Fields: net_call_premium, net_put_premium, net_delta (per minute delta flow), tape_time.
+  // net_delta: session net delta across all SPY options — granular NOPE equivalent.
+  // NOPE: per-minute nope score. Fields: nope, nope_fill, call_delta, put_delta, timestamp.
+  // marketTide: market-wide sentiment.
+  const [netPremRaw, nope, tide] = await Promise.all([
+    safeFetch(CFG.endpoints.netPrem,    'dealer'),
+    safeFetch(CFG.endpoints.nope,       'dealer'),
+    safeFetch(CFG.endpoints.marketTide, 'dealer'),
+  ]);
+
+  // Cumulate netPrem ticks into session running totals
+  let cumCallPrem = 0, cumPutPrem = 0, cumNetDelta = 0;
+  const ticks = netPremRaw?.data || null;
+  if (ticks && ticks.length > 0) {
+    ticks.forEach(t => {
+      cumCallPrem  += parseFloat(t.net_call_premium) || 0;
+      cumPutPrem   += parseFloat(t.net_put_premium)  || 0;
+      cumNetDelta  += parseFloat(t.net_delta)         || 0;
+    });
+  }
+
+  return {
+    netPrem:     ticks,          // raw ticks (for momentum calc)
+    cumCallPrem,                 // session cumulative net call premium
+    cumPutPrem,                  // session cumulative net put premium
+    cumNetDelta,                 // session cumulative net delta — granular NOPE proxy
+    nope:        nope?.data || null,
+    marketTide:  tide?.data || null,
+  };
+}
+
+async function fetchDark() {
+  // darkpool: dark pool prints (fields: price, size, executed_at, premium)
+  // litflow: lit exchange large block trades (fields: price, size, premium, executed_at, market_center)
+  const [dark, lit] = await Promise.all([
+    safeFetch(CFG.endpoints.darkpool, 'dark'),
+    safeFetch(CFG.endpoints.litflow,  'dark'),
+  ]);
+  return {
+    dark: dark?.data || null,
+    lit:  lit?.data  || null,
+  };
+}
+
+async function fetchOIStruct() {
+  // Structural OI data — fetched at boot and every 2h (day-over-day, slow-changing)
+  // oiChange:   largest overnight OI position changes — institutional pre-session levels
+  // oiByExpiry: call_oi + put_oi per expiry — skew reveals directional bias per DTE
+  // oiByStrike: call_oi + put_oi per strike — structural weight for cluster persistence
+  const [oiChange, oiByExpiry, oiByStrike] = await Promise.all([
+    safeFetch(CFG.endpoints.oiChange,   'oiStruct'),
+    safeFetch(CFG.endpoints.oiByExpiry, 'oiStruct'),
+    safeFetch(CFG.endpoints.oiByStrike, 'oiStruct'),
+  ]);
+
+  // Pre-process oiByStrike into a lookup map for fast cluster weighting
+  const oiByStrikeMap = {};
+  let peakStrikeOI = 1;
+  (oiByStrike?.data || []).forEach(s => {
+    const k = Math.round(parseFloat(s.strike));
+    const total = (parseFloat(s.call_oi)||0) + (parseFloat(s.put_oi)||0);
+    if (!isNaN(k) && total > 0) {
+      oiByStrikeMap[k] = {
+        callOI: parseFloat(s.call_oi)||0,
+        putOI:  parseFloat(s.put_oi)||0,
+        total,
+        putSkew: (parseFloat(s.put_oi)||0) / (total || 1),
+      };
+      if (total > peakStrikeOI) peakStrikeOI = total;
+    }
+  });
+  // Normalize structural weights
+  Object.values(oiByStrikeMap).forEach(v => {
+    v.structuralWeight = clamp(v.total / peakStrikeOI, 0, 1);
+  });
+
+  // Pre-process oiByExpiry into skew per expiry
+  const oiSkewByExpiry = {};
+  (oiByExpiry?.data || []).forEach(e => {
+    const co = parseFloat(e.call_oi)||0;
+    const po = parseFloat(e.put_oi)||0;
+    const total = co + po || 1;
+    oiSkewByExpiry[e.expiry] = {
+      callOI: co, putOI: po,
+      putSkew: po / total,   // > 0.65 = put-heavy = downside bias
+      pcRatio: po / (co || 1),
+    };
+  });
+
+  // Pre-process oiChange: parse option symbols to extract strike/type
+  // Symbol format: SPY{YYMMDD}{C|P}{strike*1000 padded 8 digits}
+  const institutionalLevels = [];
+  (oiChange?.data || []).slice(0, 30).forEach(row => {
+    const sym = row.option_symbol || '';
+    const match = sym.match(/SPY\d{6}([CP])(\d{8})/);
+    if (!match) return;
+    const isCall   = match[1] === 'C';
+    const strike   = parseFloat(match[2]) / 1000;
+    const oiDiff   = parseFloat(row.oi_diff_plain) || 0;
+    const prevAsk  = parseFloat(row.prev_ask_volume) || 0;
+    const prevBid  = parseFloat(row.prev_bid_volume) || 0;
+    const aggressive = prevAsk > prevBid * 2;  // bought on ask = new position
+    if (Math.abs(oiDiff) > 500 && strike > 0) {
+      institutionalLevels.push({
+        strike, isCall, oiDiff,
+        significance: clamp(Math.abs(oiDiff) / 10000, 0.70, 0.92),
+        aggressive,  // true = new position, false = roll/hedge
+      });
+    }
+  });
+
+  return { oiByStrikeMap, oiSkewByExpiry, institutionalLevels, peakStrikeOI };
+}
+
+async function fetchOI() {
+  // vol+OI per expiry: {expires, oi, volume} per expiry — volume/oi = activity ratio
+  // Activity ratio = how actively traded each expiry is relative to existing positions.
+  // High ratio = dealers actively hedging that expiry now, regardless of absolute GEX.
+  // OI by strike: call_oi + put_oi per strike for structural reference.
+  const [volOI, byStrike] = await Promise.all([
+    safeFetch(CFG.endpoints.volOIExpiry, 'oi'),
+    safeFetch(CFG.endpoints.oiByStrike,  'oi'),
+  ]);
+
+  // Pre-compute activity ratio per expiry
+  const volOIData = volOI?.data || null;
+  const activityByExpiry = {};
+  if (volOIData) {
+    volOIData.forEach(e => {
+      const oi  = parseFloat(e.oi)     || 1;
+      const vol = parseFloat(e.volume) || 0;
+      activityByExpiry[e.expires] = {
+        oi, vol,
+        ratio: vol / oi,  // > 1 = more volume than OI = active trading
+      };
+    });
+  }
+
+  return {
+    volOI:           volOIData,
+    activityByExpiry,            // {expiry: {oi, vol, ratio}} — used by SPYGRAVITY
+    byStrike:        byStrike?.data || null,
+  };
+}
+
+async function fetchStations() {
+  const mp = await safeFetch(CFG.endpoints.maxPain, 'stations');
+  return { maxPain: mp?.data || null };
+}
+
+async function fetchState() {
+  // stock-state: market session + total volume (fields: market_time, total_volume, open, close, prev_close)
+  // market_time: "premarket" | "regular" | "postmarket"
+  // total_volume: cumulative session volume — used for volume-aware cluster confirmation
+  const s = await safeFetch(CFG.endpoints.stockState, 'state');
+  const d = s?.data;
+  if (!d) return null;
+  return {
+    marketTime:  d.market_time  || 'unknown',
+    totalVolume: parseFloat(d.total_volume) || 0,
+    open:        parseFloat(d.open)         || 0,
+    prevClose:   parseFloat(d.prev_close)   || 0,
+    high:        parseFloat(d.high)         || 0,
+    low:         parseFloat(d.low)          || 0,
+  };
+}
+
+// ── Category dispatch ──────────────────────────────────────────────
+const FETCH_FNS = {
+  bars:     fetchBars,
+  pdhl:     fetchPDHL,
+  gamma:    fetchGamma,
+  flow:     fetchFlow,
+  dealer:   fetchDealer,
+  dark:     fetchDark,
+  oi:       fetchOI,
+  oiStruct: fetchOIStruct,
+  stations: fetchStations,
+  state:    fetchState,
+};
+
+// ── Master fetch cycle ────────────────────────────────────────────
+// Runs every 5s. Each category checks its own interval.
+// Fetches only what is due. Writes one complete lake row regardless.
+
+async function fetchCycle() {
+  const now = Date.now();
+
+  // Determine which categories are due for a refresh
+  const due = Object.keys(INTERVALS).filter(
+    cat => (now - Cache[cat].lastFetched) >= INTERVALS[cat]
+  );
+
+  // Fetch all due categories in parallel
+  await Promise.all(due.map(async cat => {
+    try {
+      const data = await FETCH_FNS[cat]();
+      Cache[cat].data        = data;
+      Cache[cat].lastFetched = now;
+    } catch(e) {
+      log('fetch err [' + cat + ']: ' + e.message, 'err');
+    }
+  }));
+
+  // Write one complete timestamped row using latest cached values
+  const row = {
+    ts:       now,
+    bars:     Cache.bars.data?.bars     || null,
+    pdhl:     Cache.pdhl.data           || null,
+    quote:    Cache.bars.data?.quote    || null,
+    vix:      Cache.bars.data?.vix      || null,
+    gamma:    Cache.gamma.data          || null,  // {spot, byExpiry, expiries}
+    flow:     Cache.flow.data           || null,  // {alerts, byExpiry}
+    dealer:   Cache.dealer.data         || null,  // {netPrem, cumCallPrem, cumPutPrem, cumNetDelta, nope, marketTide}
+    dark:     Cache.dark.data           || null,  // {dark, lit}
+    oi:       Cache.oi.data             || null,  // {volOI, activityByExpiry, byStrike}
+    stations: Cache.stations.data       || null,  // {maxPain}
+    state:    Cache.state.data          || null,  // {marketTime, totalVolume, open, prevClose}
+    oiStruct: Cache.oiStruct.data       || null,  // {oiByStrikeMap, oiSkewByExpiry, institutionalLevels}
+  };
+
+  DataLake.push(row);
+  if (DataLake.length > CFG.lakeMaxRows) DataLake.shift();
+  return row;
+}
+
+// ── Polling orchestrator ──────────────────────────────────────────
+let _pollHandle = null;
+function startFetching(onUpdate) {
+  if (_pollHandle) return;
+  async function cycle() {
+    try {
+      const row = await fetchCycle();
+      if (typeof onUpdate === 'function') onUpdate(row);
+    } catch(e) {
+      log('cycle err: ' + e.message, 'err');
+    }
+  }
+  cycle(); // fire immediately
+  _pollHandle = setInterval(cycle, CFG.pollMs);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SPYSHIP
+// ═══════════════════════════════════════════════════════════
+
+function calcEMA(bars, period) {
+  if (!bars || bars.length < 2) return [];
+  const k = 2 / (period + 1);
+  let ema = bars[0].c;
+  return bars.map(b => { ema = b.c * k + ema * (1 - k); return ema; });
+}
+
+function calcATR(bars, period = 14) {
+  if (!bars || bars.length < period + 1) return null;
+  const r = bars.slice(-period - 1);
+  let sum = 0;
+  for (let i = 1; i < r.length; i++) {
+    sum += Math.max(
+      r[i].h - r[i].l,
+      Math.abs(r[i].h - r[i-1].c),
+      Math.abs(r[i].l - r[i-1].c)
+    );
+  }
+  return sum / period;
+}
+
+function calcVPOC(bars) {
+  if (!bars || bars.length < 5) return null;
+  const tick = CFG.vpocTick;
+  const vol = {};
+  for (const b of bars) {
+    if (b.v <= 0) continue;
+    const lo = Math.floor(b.l / tick) * tick;
+    const hi = Math.ceil(b.h  / tick) * tick;
+    const levels = [];
+    for (let p = lo; p <= hi; p = +(p + tick).toFixed(4)) levels.push(+(p.toFixed(4)));
+    const perLevel = b.v * 0.5 / Math.max(levels.length, 1);
+    const closeLevel = +(Math.round(b.c / tick) * tick).toFixed(4);
+    for (const p of levels) vol[p] = (vol[p] || 0) + perLevel;
+    vol[closeLevel] = (vol[closeLevel] || 0) + b.v * 0.5;
+  }
+  let best = 0, vpoc = 0;
+  for (const [p, v] of Object.entries(vol)) {
+    if (v > best) { best = v; vpoc = parseFloat(p); }
+  }
+  return vpoc > 0 ? vpoc : null;
+}
+
+const SS = {  // ShipState — persists between cycles
+  smoothScore: 0, smoothHeading: 0, smoothMomentum: 0, smoothVpoc: 0,
+  crossoverLeft:  0,
+  prevE8AboveE21: null,
+  vpocHist:       [],
+  headingHoldLeft: 0,   // bars remaining before heading state can flip (3-bar min hold)
+  lastHeading:     '',  // last committed heading state
+};
+
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function smooth(prev, curr, a) { return prev + a * (curr - prev); }
+function vpocVelocity(atr) {
+  const h = SS.vpocHist;
+  if (h.length < 2) return 0;
+  const lb = Math.min(4, h.length - 1);
+  return clamp((h[h.length-1].val - h[h.length-1-lb].val) / (atr * lb), -1, 1);
+}
+
+function computeSPYSHIP(row) {
+  try {
+    const bars  = row?.bars;
+    const minBars = Math.max(CFG.ema21Period + 5, 30);
+    if (!bars || bars.length < minBars) return null;
+
+    const px   = row?.quote?.last || bars[bars.length - 1].c;
+    const atr  = calcATR(bars, 14);
+    if (!atr || atr < 0.005) return null;
+
+    // Filter to regular-session bars for VPOC (9:30–16:00 ET)
+    // Extended-hours bars have near-zero volume → VPOC velocity always ~0 → STALLED
+    const regularBars = bars.filter(b => {
+      if (!b.timeStr) return true;  // keep if no time info
+      const [h, m] = b.timeStr.split(':').map(Number);
+      const etMin  = h * 60 + m;
+      return etMin >= 570 && etMin < 960;  // 9:30–16:00
+    });
+    const vpocBars = regularBars.length >= 10 ? regularBars : bars;
+
+    const e8v  = calcEMA(bars, CFG.ema8Period);
+    const e21v = calcEMA(bars, CFG.ema21Period);
+    const n    = bars.length;
+    const e8   = e8v[n-1];
+    const e21  = e21v[n-1];
+
+    const SL8  = 5, SL21 = 10;
+    const e8p  = e8v[Math.max(0, n-1-SL8)];
+    const e21p = e21v[Math.max(0, n-1-SL21)];
+    const e8_5 = e8v[Math.max(0, n-6)];
+    const e21_5= e21v[Math.max(0, n-6)];
+
+    // VPOC from regular-session bars — eliminates extended-hours zero-volume noise
+    const vpoc = calcVPOC(vpocBars);
+    if (!vpoc) return null;
+
+    SS.vpocHist.push({ ts: row.ts, val: vpoc });
+    if (SS.vpocHist.length > 30) SS.vpocHist.shift();
+    const vpocVel = vpocVelocity(atr);
+
+    // Crossover detection
+    const e8AboveE21 = e8 > e21;
+    if (SS.prevE8AboveE21 !== null && SS.prevE8AboveE21 !== e8AboveE21)
+      SS.crossoverLeft = CFG.ship.crossoverBars;
+    SS.prevE8AboveE21 = e8AboveE21;
+    if (SS.crossoverLeft > 0) SS.crossoverLeft--;
+
+    // ── Anchor 1: Heading ─────────────────────────────────
+    const dist8  = (px - e8)  / atr;
+    const dist21 = (px - e21) / atr;
+    const spread = (e8  - e21) / atr;
+    const headingRaw = clamp(dist8*0.50 + spread*0.30 + dist21*0.20, -1, 1);
+
+    const aboveE8  = px > e8;
+    const aboveE21 = px > e21;
+    const betweenEMAs = (aboveE8 !== aboveE21) ||
+                        (Math.abs(dist8) < 0.15 && Math.abs(spread) < 0.10);
+
+    let headingRaw_, headingConf;
+    if      (betweenEMAs)            { headingRaw_ = 'CONTESTED';    headingConf = 0.25; }
+    else if (aboveE8 && e8AboveE21)  { headingRaw_ = 'ALIGNED_BULL'; headingConf = 0.88; }
+    else if (!aboveE8 && !e8AboveE21){ headingRaw_ = 'ALIGNED_BEAR'; headingConf = 0.88; }
+    else if (e8AboveE21 && !aboveE8) { headingRaw_ = 'LAGGING_BULL'; headingConf = 0.62; }
+    else                             { headingRaw_ = 'LAGGING_BEAR'; headingConf = 0.62; }
+
+    // 3-bar heading hold — prevent single-bar crossover flips
+    if (SS.lastHeading && headingRaw_ !== SS.lastHeading) {
+      if (SS.headingHoldLeft > 0) {
+        headingRaw_  = SS.lastHeading;  // hold prior heading
+        headingConf *= 0.70;             // reduce confidence during hold
+        SS.headingHoldLeft--;
+      } else {
+        SS.lastHeading     = headingRaw_;
+        SS.headingHoldLeft = 3;          // new heading confirmed — hold for 3 bars
+      }
+    } else {
+      SS.lastHeading = headingRaw_;
+      if (SS.headingHoldLeft > 0) SS.headingHoldLeft--;
+    }
+    const heading = headingRaw_;
+
+    SS.smoothHeading = smooth(SS.smoothHeading, headingRaw, CFG.ship.smoother);
+
+    // ── Anchor 2: Momentum ────────────────────────────────
+    const slope8   = clamp((e8  - e8p)  / (atr * SL8),  -1, 1);
+    const slope21  = clamp((e21 - e21p) / (atr * SL21), -1, 1);
+    const spreadNow  = (e8   - e21)   / atr;
+    const spreadPrev = (e8_5 - e21_5) / atr;
+    const spreadChg  = clamp(spreadNow - spreadPrev, -1, 1);
+    const momentumRaw = clamp(slope8*0.50 + slope21*0.30 + spreadChg*0.20, -1, 1);
+
+    const slopeAgree = Math.sign(slope8) === Math.sign(slope21);
+    const expanding  = Math.sign(spreadChg) === Math.sign(spreadNow);
+    let momentumConf;
+    if      (Math.abs(slope8) < 0.05)       momentumConf = 0.20;
+    else if (slopeAgree && expanding)        momentumConf = 0.85;
+    else if (slopeAgree)                     momentumConf = 0.65;
+    else                                     momentumConf = 0.40;
+
+    SS.smoothMomentum = smooth(SS.smoothMomentum, momentumRaw, CFG.ship.smoother);
+
+    // ── Anchor 3: VPOC ────────────────────────────────────
+    const vpocGap = clamp((px - vpoc) / atr, -3, 3);
+    let vpocRaw   = clamp(vpocVel*0.60 + vpocGap*0.40, -1, 1);
+    if (Math.abs(vpocGap) > 2.5 && Math.abs(vpocVel) < 0.05) vpocRaw *= 0.30;
+
+    const vpocAligned = Math.sign(vpocGap) === Math.sign(vpocVel);
+    let vpocState, vpocConf;
+    if      (Math.abs(vpocVel) < CFG.ship.vpocRejectionThresh * 0.5)
+      { vpocState = 'STALLED';    vpocConf = 0.35; }
+    else if (!vpocAligned && Math.abs(vpocVel) > CFG.ship.vpocRejectionThresh)
+      { vpocState = 'REJECTING';  vpocConf = 0.20; }
+    else if (vpocAligned)
+      { vpocState = 'CHASING';    vpocConf = 0.85; }
+    else
+      { vpocState = 'STALLED';    vpocConf = 0.35; }
+
+    SS.smoothVpoc = smooth(SS.smoothVpoc, vpocRaw, CFG.ship.smoother);
+
+    // ── Dynamic weights + gates ───────────────────────────
+    let wH = CFG.ship.headingWeight;    // 0.40
+    let wM = CFG.ship.momentumWeight;   // 0.35
+    let wV = CFG.ship.vpocWeight;       // 0.25
+    let confCap = 1.0;
+
+    if (betweenEMAs)          confCap = Math.min(confCap, CFG.ship.betweenEmasConfCap);
+    if (SS.crossoverLeft > 0) confCap = Math.min(confCap, CFG.ship.crossoverConfCap);
+
+    if (vpocState === 'REJECTING') {
+      wV = CFG.ship.vpocRejectionWeight;
+      const tot = wH + wM;
+      wH = (1 - wV) * (wH / tot);
+      wM = (1 - wV) * (wM / tot);
+    }
+
+    // ── Final score ───────────────────────────────────────
+    const totalConf = headingConf*wH + momentumConf*wM + vpocConf*wV;
+    const rawScore = totalConf > 0
+      ? (SS.smoothHeading*headingConf*wH + SS.smoothMomentum*momentumConf*wM + SS.smoothVpoc*vpocConf*wV) / totalConf
+      : 0;
+
+    SS.smoothScore = smooth(SS.smoothScore, clamp(rawScore, -1, 1), CFG.ship.smoother);
+    const finalScore = clamp(SS.smoothScore, -1, 1);
+    const finalConf  = clamp(totalConf * confCap, 0, 1);
+
+    let state;
+    if      (finalConf < CFG.ship.confMin)         state = 'POSITION';
+    else if (finalScore >= CFG.ship.bullThresh)     state = 'BULL';
+    else if (finalScore <= CFG.ship.bearThresh)     state = 'BEAR';
+    else                                            state = 'POSITION';
+
+    return {
+      score: +finalScore.toFixed(3),
+      conf:  +finalConf.toFixed(3),
+      state, heading, vpocState,
+      anchors: {
+        heading:  +SS.smoothHeading.toFixed(3),
+        momentum: +SS.smoothMomentum.toFixed(3),
+        vpoc:     +SS.smoothVpoc.toFixed(3),
+        headingConf, momentumConf, vpocConf,
+      },
+      diag: {
+        px, ema8: +e8.toFixed(3), ema21: +e21.toFixed(3),
+        vpoc: +vpoc.toFixed(2), vpocGap: +vpocGap.toFixed(3), vpocVel: +vpocVel.toFixed(3),
+        slope8: +slope8.toFixed(3), slope21: +slope21.toFixed(3),
+        spreadChg: +spreadChg.toFixed(3), atr: +atr.toFixed(3),
+        betweenEMAs, crossoverActive: SS.crossoverLeft > 0,
+      },
+    };
+  } catch(e) {
+    log('SPYSHIP err: ' + e.message, 'err');
+    return null;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  SPYGRAVITY — Signal 2
+//
+//  One question: given the gamma cluster landscape — position,
+//  mass, dynamics, and DTE composition — what direction is the
+//  gravitational field pulling, and how clearly?
+//
+//  Four components:
+//    1. Cluster topology    — force per cluster, netField
+//    2. Dynamics            — growth rates, fieldRotation, cluster roles
+//    3. DTE temporal layers — 0/1/2DTE weights, persistence
+//    4. Gravitational map   — gradient, Lagrange points, emerging clusters,
+//                             overlap zones
+//
+//  Reads: Lake.gamma.spot + Lake.gamma.expiry + Lake history for dynamics
+//  Knows nothing about: bars, EMAs, VPOC, named levels, flow
+// ═══════════════════════════════════════════════════════════
+
+let timeCtx = null;  // rebuilt each render cycle by buildTimeCtx()
+
+const GravState = {
+  smoothScore:     0,
+  sessionDate:     '',
+  peakHistory:     [],      // [{ts, peak}] — 10-min rolling window
+  lastResult:      null,
+  lastResultTs:    0,
+  lastFieldState:  null,    // prior fieldState for hysteresis deadband
+  pinnedCycles:    0,       // consecutive PINNED cycles (for PINNED override)
+};
+
+// ── Time helpers ──────────────────────────────────────────────────
+function etNow() {
+  try {
+    const d  = new Date();
+    const et = new Date(d.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+    return {
+      hour:    et.getHours() + et.getMinutes() / 60,
+      minute:  et.getMinutes(),
+      dateStr: et.toISOString().slice(0, 10),
+    };
+  } catch(e) {
+    return { hour: 12, minute: 0, dateStr: new Date().toISOString().slice(0, 10) };
+  }
+}
+
+// ── SPY expiry day detection ──────────────────────────────────────
+// SPY has 0DTE on Mon, Wed, Thu, Fri (quad witching Mon/Wed/Thu/Fri weeklies).
+// On non-expiry days there is no 0DTE — 1DTE is the shortest horizon.
+function isSPYExpiryDay(dateStr) {
+  try {
+    const dow = new Date(dateStr + 'T12:00:00Z').getUTCDay();
+    return dow !== 2 && dow !== 0; // not Tuesday or Sunday
+  } catch(e) { return true; }
+}
+
+// ── DTE weight table ──────────────────────────────────────────────
+// Returns {w0, w1, w2} — time-of-day aware DTE weighting for SPYGRAVITY.
+// On 0DTE expiry days, 0DTE authority decays non-linearly through session.
+// After 2pm, 1DTE/2DTE dominate because 0DTE positions are being closed.
+// On non-expiry days, w0=0 always (no 0DTE exists).
+function dteWeights(etHour, isExpiryDay) {
+  if (!isExpiryDay) {
+    return { w0: 0.00, w1: 0.60, w2: 0.40 };
+  }
+  // Expiry day — time-stepped decay of 0DTE authority
+  if (etHour < 10.00) return { w0: 0.65, w1: 0.25, w2: 0.10 }; // open
+  if (etHour < 11.50) return { w0: 0.50, w1: 0.35, w2: 0.15 }; // mid-morning
+  if (etHour < 13.00) return { w0: 0.30, w1: 0.45, w2: 0.25 }; // noon
+  if (etHour < 14.00) return { w0: 0.15, w1: 0.50, w2: 0.35 }; // early afternoon
+  if (etHour < 15.00) return { w0: 0.05, w1: 0.55, w2: 0.40 }; // late afternoon
+  return              { w0: 0.02, w1: 0.55, w2: 0.43 };        // final hour
+}
+
+function calcDTE(expiryStr, todayStr) {
+  try {
+    return Math.max(0, Math.round(
+      (new Date(expiryStr) - new Date(todayStr)) / 86400000
+    ));
+  } catch(e) { return 99; }
+}
+
+// ── Force decay by distance ───────────────────────────────────────
+// gravDecay uses gravUnits (median option strike spacing ≈ $1 for SPY).
+// Normalized to strike space, not intraday ATR tick space.
+function gravDecay(distGrav) {
+  return distGrav < 0.5 ? 1.00
+       : distGrav < 1.5 ? 0.85
+       : distGrav < 3.0 ? 0.60
+       : distGrav < 5.0 ? 0.35
+       : distGrav < 8.0 ? 0.15
+       : distGrav < 12.0? 0.05
+       : 0.0;
+}
+
+// ── Net force at any test price (used for gradient map) ───────────
+// Uses adjustedForce which includes dynamics — matches what Lagrange
+// analysis confirmed: adjusted force (not base) gives the live field
+function fieldForceAt(testPx, clusters, gravUnit) {
+  let net = 0, total = 0;
+  for (const c of clusters) {
+    const d   = Math.abs(testPx - c.strike) / gravUnit;
+    const dec = gravDecay(d);
+    const dir = testPx < c.strike ? 1 : -1;  // above test point pulls up, below pulls down
+    const f   = c.adjustedForce_abs * dec * dir;
+    net   += f;
+    total += Math.abs(f);
+  }
+  return { net, total };
+}
+
+// ── Gradient map: sweep price range, compute F(x) and dF/dx ──────
+// Returns decel zones, pin zones, vacuum tubes, and Lagrange points
+function buildGradientMap(clusters, px, gravUnit, peakMass) {
+  const STEP     = 0.20;   // gravUnit per sample (~$0.20 for SPY)
+  const RANGE    = 12.0;   // gravUnits on each side (~$12 for SPY)
+  const STEPS    = Math.round(RANGE / STEP) * 2 + 1;
+  const samples  = [];
+
+  for (let i = 0; i < STEPS; i++) {
+    const testPx  = px + (i - Math.floor(STEPS / 2)) * STEP * gravUnit;
+    const { net, total } = fieldForceAt(testPx, clusters, gravUnit);
+    samples.push({ px: testPx, net, total, distATR: (testPx - px) / gravUnit });
+  }
+
+  // Numerical gradient dF/dx (central difference)
+  for (let i = 1; i < samples.length - 1; i++) {
+    samples[i].gradient = (samples[i + 1].net - samples[i - 1].net) / (2 * STEP * gravUnit);
+  }
+  samples[0].gradient             = samples[1].gradient             || 0;
+  samples[samples.length-1].gradient = samples[samples.length-2].gradient || 0;
+
+  // Classify zones from the force and gradient profiles
+  const gradientZones  = [];
+  const lagrangePoints = [];
+
+  // Lagrange points: zero crossings of net force between clusters
+  // Only between pairs of significant clusters (both > 10% peak)
+  const sigMass = (peakMass || 1) * 0.10; // 10% of current rolling peak
+  for (let i = 0; i < samples.length - 1; i++) {
+    const s0 = samples[i], s1 = samples[i + 1];
+    if (Math.sign(s0.net) !== Math.sign(s1.net) && s0.total > 0.01 && s1.total > 0.01) {
+      // Linear interpolation to find exact crossing
+      const t    = Math.abs(s0.net) / (Math.abs(s0.net) + Math.abs(s1.net));
+      const lPx  = s0.px + t * (s1.px - s0.px);
+      const dist = Math.abs(lPx - px) / gravUnit;
+
+      // Find the clusters bracketing this crossing
+      const below = clusters.filter(c => c.strike < lPx).sort((a,b) => b.strike - a.strike)[0];
+      const above = clusters.filter(c => c.strike > lPx).sort((a,b) => a.strike - b.strike)[0];
+
+      // Only flag if both bracketing clusters have meaningful mass
+      if (below && above && below.mass > sigMass && above.mass > sigMass) {
+        const massRatio = Math.min(below.mass, above.mass) / Math.max(below.mass, above.mass);
+        lagrangePoints.push({
+          price:        +lPx.toFixed(2),
+          distATR:      +dist.toFixed(2),
+          stability:    massRatio > 0.40 ? 'STABLE' : 'UNSTABLE',
+          massBelow:    +below.mass.toFixed(0),
+          massAbove:    +above.mass.toFixed(0),
+          strikeBelow:  below.strike,
+          strikeAbove:  above.strike,
+        });
+      }
+    }
+  }
+
+  // Zone classification: scan for sustained zone types
+  // Group consecutive samples of the same character
+  let zoneStart = null, zoneType = null;
+  const DECEL_GRAD_THRESH  = 0.30;  // |gradient| above this = rapid force change
+  const PIN_FORCE_THRESH   = 0.50;  // |net|/total above this = strong net pull
+  const VAC_THRESH         = 0.08;  // |net|/total below this = near-zero force
+
+  for (let i = 0; i < samples.length; i++) {
+    const s       = samples[i];
+    const relNet  = s.total > 0 ? Math.abs(s.net) / s.total : 0;
+    const absGrad = Math.abs(s.gradient || 0) * gravUnit;  // gravUnit-normalized gradient
+
+    const type =
+      absGrad > DECEL_GRAD_THRESH ? 'DECEL_ZONE'
+      : relNet < VAC_THRESH       ? 'VACUUM_TUBE'
+      : relNet > PIN_FORCE_THRESH ? 'PIN_ZONE'
+      : null;
+
+    if (type !== zoneType) {
+      if (zoneType && zoneStart !== null && i - zoneStart >= 2) {
+        // Commit zone if it spans at least 2 samples (0.2 ATR)
+        const center = samples[Math.floor((zoneStart + i) / 2)];
+        const width  = (i - zoneStart) * STEP;
+        gradientZones.push({
+          price:   +center.px.toFixed(2),
+          type:    zoneType,
+          distATR: +Math.abs(center.distATR).toFixed(2),
+          width:   +width.toFixed(2),
+          strength: zoneType === 'DECEL_ZONE'
+            ? +Math.min(Math.abs(center.gradient || 0) * gravUnit / DECEL_GRAD_THRESH, 1).toFixed(2)
+            : zoneType === 'PIN_ZONE'
+            ? +(Math.abs(center.net) / (center.total || 1)).toFixed(2)
+            : +(1 - Math.abs(center.net) / (center.total || 0.01)).toFixed(2),
+        });
+      }
+      zoneType  = type;
+      zoneStart = i;
+    }
+  }
+
+  return { samples, gradientZones, lagrangePoints };
+}
+
+// ── Main SPYGRAVITY compute ───────────────────────────────────────
+function computeSPYGRAVITY(row) {
+  try {
+    const { hour: etHour, dateStr: todayStr } = etNow();
+
+    // ── Data sources ──────────────────────────────────────────────
+    // byExpiry: [{strike, expiry, call_gamma_oi, put_gamma_oi}] — per-expiry GEX
+    // expiries: the 3 SPY expiry dates fetched [0DTE, 1DTE, 2DTE]
+    // spot:     aggregate fallback [{strike, call_gamma_oi, put_gamma_oi}]
+    const byExpiry = row?.gamma?.byExpiry || [];
+    const expiries = row?.gamma?.expiries || [];  // [today, 1dte_date, 2dte_date]
+    const spotData = row?.gamma?.spot     || [];
+    const actByExp = row?.oi?.activityByExpiry || {};  // {expiry: {oi, vol, ratio}}
+
+    const px = row?.quote?.last || (row?.bars?.length ? row.bars[row.bars.length-1].c : 0);
+    if (!px) return GravState.lastResult;
+
+    // Need at least one data source
+    if (byExpiry.length === 0 && spotData.length === 0) return GravState.lastResult;
+
+    const atr = row.bars ? calcATR(row.bars, 14) : 0.30;
+    const isExpiryDay = isSPYExpiryDay(todayStr);
+
+    // ── DTE authority weights — time of day ───────────────────────
+    // Activity ratio modulates base weights: the expiry being traded most
+    // actively NOW gets proportionally more gravitational authority.
+    const baseW  = dteWeights(etHour, isExpiryDay);
+    const ratio0 = 1 + Math.min(actByExp[expiries[0]]?.ratio || 0, 3);  // cap 3x boost
+    const ratio1 = 1 + Math.min(actByExp[expiries[1]]?.ratio || 0, 3);
+    const ratio2 = 1 + Math.min(actByExp[expiries[2]]?.ratio || 0, 3);
+    const rawW0  = baseW.w0 * ratio0;
+    const rawW1  = baseW.w1 * ratio1;
+    const rawW2  = baseW.w2 * ratio2;
+    const wNorm  = rawW0 + rawW1 + rawW2 || 1;
+    const w0 = rawW0 / wNorm;
+    const w1 = rawW1 / wNorm;
+    const w2 = rawW2 / wNorm;
+
+    // ── Step 1: DTE-weighted cluster build ────────────────────────
+    // ARCHITECTURAL CORE: build per-strike mass from per-expiry gamma × DTE weight.
+    // This means $700 with zero 0DTE gamma literally has zero weight at 9:30am —
+    // only strikes where money is actually expiring today will cluster.
+    // Fallback to aggregate spot when byExpiry is unavailable.
+    const strikeMap = {};  // { strike: { callGamma, putGamma } }
+
+    if (byExpiry.length > 0 && expiries.length > 0) {
+      byExpiry.forEach(row => {
+        const strike = parseFloat(row.strike);
+        if (isNaN(strike) || strike <= 0) return;
+        const k = Math.round(strike);
+
+        const expiryIdx = expiries.indexOf(row.expiry);
+        if (expiryIdx < 0 || expiryIdx > 2) return;  // only 3 layers
+
+        const w = [w0, w1, w2][expiryIdx];
+        const cg = Math.abs(parseFloat(row.call_gamma_oi) || 0) * w;
+        const pg = Math.abs(parseFloat(row.put_gamma_oi)  || 0) * w;
+
+        if (!strikeMap[k]) strikeMap[k] = { callGamma: 0, putGamma: 0 };
+        strikeMap[k].callGamma += cg;
+        strikeMap[k].putGamma  += pg;
+      });
+    } else if (spotData.length > 0) {
+      // Fallback: aggregate spot — all expiries equally weighted
+      // Less accurate but prevents blackout when byExpiry is unavailable
+      spotData.forEach(s => {
+        const k = Math.round(parseFloat(s.strike));
+        if (isNaN(k) || k <= 0) return;
+        strikeMap[k] = {
+          callGamma: Math.abs(parseFloat(s.call_gamma_oi) || 0),
+          putGamma:  Math.abs(parseFloat(s.put_gamma_oi)  || 0),
+        };
+      });
+      log('GRAV: using aggregate spot fallback (byExpiry unavailable)', 'warn');
+    }
+
+    const allStrikes = Object.entries(strikeMap).map(([k, v]) => ({
+      strike: parseFloat(k), callGamma: v.callGamma, putGamma: v.putGamma,
+    })).filter(s => s.strike > 0);
+
+    if (allStrikes.length === 0) return GravState.lastResult;
+
+    // ── Compute gravUnit from median strike spacing ───────────────
+    let gravUnit = 1.0;
+    if (allStrikes.length > 3) {
+      const sorted = allStrikes.map(s => s.strike).sort((a, b) => a - b);
+      const diffs  = [];
+      for (let i = 1; i < sorted.length; i++) diffs.push(sorted[i] - sorted[i-1]);
+      diffs.sort((a, b) => a - b);
+      gravUnit = Math.max(diffs[Math.floor(diffs.length/2)] || 1.0, 0.25);
+    }
+
+    // ── Daily reset ───────────────────────────────────────────────
+    if (GravState.sessionDate !== todayStr) {
+      GravState.sessionDate = todayStr;
+      GravState.peakHistory = [];
+    }
+
+    // ── Contextual rolling peak — 10-minute window ────────────────
+    // Peak tracks the highest single-strike weighted mass seen in the last 10 minutes.
+    // "What is the gamma landscape capable of RIGHT NOW" — not hours ago.
+    // When 0DTE collapses at 2pm, threshold drops within 10 min to match 1DTE levels.
+    const cyclePeak = Math.max(...allStrikes.map(s => s.callGamma + s.putGamma), 0);
+    const nowMs = Date.now();
+    GravState.peakHistory.push({ ts: nowMs, peak: cyclePeak });
+    GravState.peakHistory = GravState.peakHistory.filter(h => h.ts > nowMs - 10 * 60 * 1000);
+    const PEAK      = Math.max(...GravState.peakHistory.map(h => h.peak), 1);
+    const THRESHOLD = Math.max(PEAK * 0.01, 0.01);  // 1% of contextual peak
+    const EMERGING  = Math.max(PEAK * 0.005, 0.001);
+    const GRAV_RANGE = 12.0;
+
+    // ── Cluster detection ─────────────────────────────────────────
+    // OI structural data — enriches cluster persistence
+    const oiMap  = row?.oiStruct?.oiByStrikeMap  || {};
+    const oiSkew = row?.oiStruct?.oiSkewByExpiry || {};
+
+    // OI skew per expiry modifies DTE weights — put-heavy expiry has downside bias
+    // Positive skewMod = more puts = bearish pressure amplified
+    const skewMod = (expiry) => {
+      const sk = oiSkew[expiry];
+      if (!sk) return 1.0;
+      if (sk.putSkew > 0.65) return 1.10;   // put-heavy = 10% downside amplification
+      if (sk.putSkew < 0.35) return 0.90;   // call-heavy = 10% upside amplification
+      return 1.0;
+    };
+
+    const clusters = allStrikes
+      .filter(s => (s.callGamma + s.putGamma) >= THRESHOLD
+                && Math.abs(s.strike - px) / gravUnit <= GRAV_RANGE)
+      .map(s => {
+        const mass    = s.callGamma + s.putGamma;
+        const netGEX  = s.callGamma - s.putGamma;
+        const distATR = Math.abs(s.strike - px) / gravUnit;
+        const dir     = s.strike > px ? 1 : -1;
+        // Structural weight: OI concentration at this strike persists across sessions
+        // High OI = institutional position = slower decay, harder pin
+        const oiEntry = oiMap[Math.round(s.strike)];
+        const structW = oiEntry ? (1 + oiEntry.structuralWeight * 0.40) : 1.0;
+        // gravDecay with structural persistence bonus — high-OI clusters decay slower
+        const effectiveDecay = gravDecay(distATR) * structW;
+        return {
+          strike: s.strike, mass, netGEX, distATR, dir,
+          decay:            effectiveDecay,
+          structuralWeight: oiEntry?.structuralWeight || 0,
+          baseForce:        mass * effectiveDecay * dir,
+          role: 'ATTRACTOR',
+        };
+      })
+      .sort((a, b) => a.distATR - b.distATR);
+
+    if (clusters.length === 0) {
+      if (spotData.length > 0 && Lake.count() % 24 === 1) {
+        log('GRAV debug — byExpiry=' + byExpiry.length + ' spot=' + spotData.length +
+            ' peak=' + PEAK.toFixed(0) + ' thresh=' + THRESHOLD.toFixed(4) +
+            ' gravUnit=$' + gravUnit.toFixed(2) + ' strikes=' + allStrikes.length +
+            ' w0=' + w0.toFixed(2) + ' w1=' + w1.toFixed(2) + ' w2=' + w2.toFixed(2), 'warn');
+      }
+      return GravState.lastResult;  // stale rather than blank
+    }
+
+    // ── Step 2: Dynamics ─────────────────────────────────────────
+    // Compare to prior lake reading for growth rate computation.
+    // priorMap uses the same per-expiry weighted mass for consistency.
+    const histRows = Lake.last(65);
+    let priorByExp = null;
+    for (let i = 0; i < histRows.length - 5; i++) {
+      if (histRows[i]?.gamma?.byExpiry?.length > 0) {
+        priorByExp = histRows[i].gamma.byExpiry;
+        break;
+      }
+    }
+    // Fall back to prior spot if no prior byExpiry
+    if (!priorByExp) {
+      for (let i = 0; i < histRows.length - 5; i++) {
+        if (histRows[i]?.gamma?.spot?.length > 0) {
+          priorByExp = histRows[i].gamma.spot.map(s => ({
+            strike: s.strike, expiry: expiries[0] || todayStr,
+            call_gamma_oi: s.call_gamma_oi, put_gamma_oi: s.put_gamma_oi,
+          }));
+          break;
+        }
+      }
+    }
+
+    const priorMap = {};
+    if (priorByExp) {
+      // Build prior weighted mass using same DTE weights
+      const priorStrMap = {};
+      priorByExp.forEach(e => {
+        const k = Math.round(parseFloat(e.strike));
+        if (isNaN(k)) return;
+        const idx = expiries.indexOf(e.expiry);
+        const pw = idx >= 0 ? [w0,w1,w2][idx] : (w0+w1+w2)/3;
+        const m = (Math.abs(parseFloat(e.call_gamma_oi)||0) +
+                   Math.abs(parseFloat(e.put_gamma_oi) ||0)) * pw;
+        priorStrMap[k] = (priorStrMap[k] || 0) + m;
+      });
+      Object.assign(priorMap, priorStrMap);
+    }
+    const hasHistory = Object.keys(priorMap).length > 0;
+
+    clusters.forEach(c => {
+      const prior     = priorMap[Math.round(c.strike)] || 0;
+      c.growthRate    = hasHistory && prior > 0
+        ? clamp((c.mass - prior) / prior, -0.80, 0.80) : 0;
+      c.dynamics      = c.growthRate >  0.12 ? 'BUILDING'
+                      : c.growthRate < -0.12 ? 'DISSOLVING' : 'STABLE';
+      c.adjustedForce     = c.baseForce * (1 + c.growthRate * 0.60);
+      c.adjustedForce_abs = Math.abs(c.mass * c.decay * (1 + c.growthRate * 0.60));
+      c.rotationContrib   = c.growthRate * c.adjustedForce;
+    });
+
+    const totalAdj = clusters.reduce((s, c) => s + Math.abs(c.adjustedForce), 0);
+    const sumAdj   = clusters.reduce((s, c) => s + c.adjustedForce, 0);
+    const sumRot   = clusters.reduce((s, c) => s + c.rotationContrib, 0);
+    if (totalAdj < 0.001) return GravState.lastResult;  // stale rather than blank
+
+    const netField      = clamp(sumAdj / totalAdj, -1, 1);
+    const fieldRotation = clamp(sumRot / totalAdj, -1, 1);
+
+    let aboveMass = 0, belowMass = 0;
+    clusters.forEach(c => { if (c.dir > 0) aboveMass += c.mass; else belowMass += c.mass; });
+    const totalMass  = aboveMass + belowMass || 1;
+    const massRatio = Math.min(aboveMass, belowMass) / Math.max(aboveMass, belowMass);
+
+    // Hysteresis deadband — prevent rapid BOUNDED↔CLEAR_RUNWAY oscillation (was 23% flip rate)
+    // Entering BOUNDED requires massRatio ≥ 0.60; exiting requires massRatio ≤ 0.48.
+    let fieldState;
+    if      (massRatio >= 0.55) fieldState = 'BOUNDED';
+    else if (massRatio >= 0.25) fieldState = 'CONTESTED';
+    else                        fieldState = 'CLEAR_RUNWAY';
+    if (GravState.lastFieldState === 'BOUNDED'   && massRatio >= 0.48) fieldState = 'BOUNDED';
+    if (GravState.lastFieldState === 'CLEAR_RUNWAY' && massRatio >= 0.50 && massRatio < 0.55)
+      fieldState = 'CONTESTED';  // buffer zone
+    GravState.lastFieldState = fieldState;
+
+    // ── Step 3: Cluster roles ─────────────────────────────────────
+    const byStrike    = [...clusters].sort((a, b) => a.strike - b.strike);
+    const aboveClust  = clusters.filter(c => c.dir >  0).sort((a, b) => a.distATR - b.distATR);
+    const belowClust  = clusters.filter(c => c.dir < 0).sort((a, b) => a.distATR - b.distATR);
+
+    const vacuumAbove = aboveClust.length >= 2
+      && (aboveClust[1].distATR - aboveClust[0].distATR) > 1.5;
+    const vacuumBelow = belowClust.length >= 2
+      && (belowClust[1].distATR - belowClust[0].distATR) > 1.5;
+
+    byStrike.forEach((c, i) => {
+      if (i === 0 || i === byStrike.length - 1) return;
+      const largerBelow = byStrike.slice(0, i).some(x => x.mass > c.mass * 1.5);
+      const largerAbove = byStrike.slice(i + 1).some(x => x.mass > c.mass * 1.5);
+      if (largerBelow && largerAbove && Math.abs(c.netGEX)/c.mass < 0.20 && c.distATR < 1.5)
+        c.role = 'BOUNDARY';
+    });
+
+    const dominant = clusters.reduce((b, c) => (!b || c.mass > b.mass) ? c : b, null);
+    if (dominant) {
+      const ngn = Math.abs(dominant.netGEX) / dominant.mass;
+      if      (dominant.distATR < 0.30 && ngn > 0.30 && dominant.dynamics === 'BUILDING')
+        dominant.role = 'PIN';
+      else if (dominant.dynamics === 'BUILDING' && Math.sign(netField) === dominant.dir)
+        dominant.role = 'LAUNCH';
+      else if (dominant.dynamics === 'DISSOLVING' && dominant.distATR > 0.80)
+        dominant.role = 'HANDOFF';
+    }
+
+    const wallEffect = !!(dominant && dominant.distATR < 0.50 && dominant.dynamics === 'BUILDING');
+    let field0DTEstate = 'NORMAL';
+    if      (dominant?.role === 'PIN')     field0DTEstate = 'PINNED';
+    else if (dominant?.role === 'LAUNCH')  field0DTEstate = 'LAUNCHING';
+    else if (dominant?.role === 'HANDOFF') field0DTEstate = 'TRANSITIONING';
+    // Track consecutive PINNED cycles for SPYCOMMAND override
+    else {
+      const nearBoundary = clusters.find(c => c.role === 'BOUNDARY' && c.distATR < 0.40);
+      if      (nearBoundary)                            field0DTEstate = 'IN_TRANSIT';
+      else if (vacuumAbove && netField > 0)             field0DTEstate = 'APPROACHING_STRUCTURAL';
+      else if (vacuumBelow && netField < 0)             field0DTEstate = 'APPROACHING_STRUCTURAL';
+    }
+    // Track consecutive PINNED cycles for SPYCOMMAND override
+    if (field0DTEstate === 'PINNED') GravState.pinnedCycles++;
+    else GravState.pinnedCycles = 0;
+
+    // ── Step 4: Gravitational map ─────────────────────────────────
+    const { gradientZones, lagrangePoints } = buildGradientMap(clusters, px, gravUnit, PEAK);
+
+    const overlapZones = [];
+    for (let i = 0; i < byStrike.length - 1; i++) {
+      const a = byStrike[i], b = byStrike[i + 1];
+      const gapATR = (b.strike - a.strike) / gravUnit;
+      if (gapATR < 1.20) {
+        const center   = (a.strike * a.mass + b.strike * b.mass) / (a.mass + b.mass);
+        const compound = a.mass + b.mass + (a.mass * b.mass / PEAK);
+        overlapZones.push({
+          price:        +center.toFixed(2),
+          distATR:      +Math.abs(center - px) / gravUnit,
+          compoundMass: +compound.toFixed(0),
+          zoneWidth:    +gapATR.toFixed(2),
+          strikePair:   [a.strike, b.strike],
+        });
+      }
+    }
+
+    const emergingClusters = allStrikes
+      .filter(s => {
+        const m = s.callGamma + s.putGamma;
+        return m >= EMERGING && m < THRESHOLD && Math.abs(s.strike - px) / gravUnit <= GRAV_RANGE;
+      })
+      .map(s => {
+        const mass = s.callGamma + s.putGamma;
+        const prior = priorMap[Math.round(s.strike)] || 0;
+        const gr = hasHistory && prior > 0 ? clamp((mass - prior)/prior, -1, 1) : 0;
+        const toThreshold = gr > 0.01 ? Math.round((THRESHOLD - mass) / (mass * gr)) : 999;
+        return {
+          strike: s.strike, massFrac: +(mass/PEAK).toFixed(3),
+          growthRate: +gr.toFixed(3), distATR: +Math.abs(s.strike-px)/atr,
+          barsToSignificant: toThreshold, imminent: toThreshold <= 6 && gr > 0.01,
+        };
+      })
+      .filter(s => s.growthRate > 0.05)
+      .sort((a, b) => a.distATR - b.distATR)
+      .slice(0, 5);
+
+    // ── Step 5: DTE metadata + OI directional bias ─────────────
+    // compositeField = netField (already DTE-weighted at Step 1).
+    // OI skew per expiry modifies the directional character of each layer.
+    const totalW   = w0 + w1 + w2 || 1;
+    const frac0    = w0 / totalW;
+    const frac1    = w1 / totalW;
+    const frac2    = w2 / totalW;
+    const nearFrac = frac0 + frac1;
+    const persistenceScore = frac0 * 0.5 + frac1 * 1.5 + frac2 * 2.5;
+
+    // OI-adjusted composite: skew per expiry modulates field direction slightly
+    const skew0 = skewMod(expiries[0]);  // 0DTE expiry skew
+    const skew1 = skewMod(expiries[1]);  // 1DTE expiry skew
+    const skew2 = skewMod(expiries[2]);  // 2DTE expiry skew
+    // Skew > 1 amplifies bearish signal; skew < 1 dampens it
+    // Apply as a mild modulator (max ±10% effect on composite)
+    const skewComposite = clamp(
+      netField * (frac0*w0*skew0 + frac1*w1*skew1 + frac2*w2*skew2) / (totalW || 1),
+      -1, 1
+    );
+    const compositeField = Math.abs(skewComposite) > 0.01 ? skewComposite : netField;
+
+    // ── Step 6: Holistic dynamics ─────────────────────────────────
+    let aboveDynScore=0, aboveDynWt=0, belowDynScore=0, belowDynWt=0;
+    clusters.forEach(c => {
+      if (c.dir > 0) { aboveDynScore += c.growthRate*c.mass; aboveDynWt += c.mass; }
+      else           { belowDynScore += c.growthRate*c.mass; belowDynWt += c.mass; }
+    });
+    const aboveDynAvg = aboveDynWt > 0 ? aboveDynScore/aboveDynWt : 0;
+    const belowDynAvg = belowDynWt > 0 ? belowDynScore/belowDynWt : 0;
+
+    const aboveDiss = aboveDynAvg < -0.12, belowDiss = belowDynAvg < -0.12;
+    const aboveBld  = aboveDynAvg >  0.12, belowBld  = belowDynAvg >  0.12;
+
+    let transitionSignal;
+    if      (aboveDiss && belowDiss) transitionSignal = 'RESETTING';
+    else if (aboveDiss && belowBld)  transitionSignal =
+      persistenceScore > 2.5 ? 'REVERSAL' : persistenceScore > 1.5 ? 'PULLBACK' : 'PAUSE';
+    else if (aboveBld  && belowDiss) transitionSignal = 'CONTINUATION';
+    else if (Math.abs(fieldRotation) < 0.10) transitionSignal = 'CONTINUATION';
+    else if (Math.sign(fieldRotation) !== Math.sign(compositeField) && Math.abs(fieldRotation) > 0.25)
+      transitionSignal = persistenceScore > 2.5 ? 'REVERSAL' : persistenceScore > 1.5 ? 'PULLBACK' : 'PAUSE';
+    else transitionSignal = 'CONTINUATION';
+
+    // ── Step 7: Confidence ────────────────────────────────────────
+    let conf = fieldState === 'CLEAR_RUNWAY' ? 0.80
+             : fieldState === 'CONTESTED'    ? 0.55 : 0.30;
+
+    const nearLagrange = lagrangePoints.filter(l => l.distATR < 0.50);
+    if (nearLagrange.length > 0) conf -= nearLagrange.some(l=>l.stability==='STABLE') ? 0.15 : 0.08;
+    const vacuumAhead = (netField > 0 && vacuumAbove) || (netField < 0 && vacuumBelow);
+    if (vacuumAhead)         conf += 0.08;
+    if (overlapZones.filter(z=>z.distATR<0.50).length > 0) conf -= 0.05;
+    if (Math.sign(netField) ===  Math.sign(fieldRotation) && Math.abs(fieldRotation) > 0.10) conf += 0.10;
+    if (Math.sign(netField) !== Math.sign(fieldRotation)  && Math.abs(fieldRotation) > 0.25) conf -= 0.15;
+    if ((aboveBld && belowDiss) || (aboveDiss && belowBld)) conf += 0.10;
+    if (persistenceScore > 2.5) conf += 0.05;
+    if (nearFrac > 0.85 && etHour > 15.0) conf *= 0.75;
+    else if (frac2 > 0.50) conf += 0.05;
+    const dissolvingMass = clusters.filter(c=>c.dynamics==='DISSOLVING').reduce((s,c)=>s+c.mass,0);
+    if (dissolvingMass/totalMass > 0.80) conf -= 0.25;
+    if (!hasHistory)              conf = Math.min(conf, 0.65);
+    if (fieldState === 'BOUNDED') conf = Math.min(conf, 0.35);
+    conf = clamp(conf, 0, 1.0);
+
+    // ── Step 8: Final score ───────────────────────────────────────
+    const rawScore = clamp(compositeField * 0.65 + fieldRotation * 0.35, -1, 1);
+    GravState.smoothScore = smooth(GravState.smoothScore, rawScore, 0.25);
+    const finalScore = clamp(GravState.smoothScore, -1, 1);
+
+    const state = conf < 0.35        ? 'POSITION'
+                : finalScore >= 0.40 ? 'BULL'
+                : finalScore <=-0.40 ? 'BEAR' : 'POSITION';
+
+    const _result = {
+      score: +finalScore.toFixed(3), conf: +conf.toFixed(3), state,
+      fieldState, netField: +netField.toFixed(3),
+      fieldRotation: +fieldRotation.toFixed(3),
+      compositeField: +compositeField.toFixed(3),
+      transitionSignal, wallEffect, field0DTEstate,
+      vacuumAbove, vacuumBelow, vacuumAhead,
+      dominantStrike: dominant?.strike   || 0,
+      dominantDir:    dominant?.dir      || 0,
+      dominantDyn:    dominant?.dynamics || 'STABLE',
+      dominantRole:   dominant?.role     || 'ATTRACTOR',
+      nearFraction:    +nearFrac.toFixed(3),
+      persistenceScore: +persistenceScore.toFixed(2),
+      field0DTE:  +(netField*frac0).toFixed(3),
+      field1DTE:  +(netField*frac1).toFixed(3),
+      field2DTE:  +(netField*frac2).toFixed(3),
+      aboveDynAvg: +aboveDynAvg.toFixed(3),
+      belowDynAvg: +belowDynAvg.toFixed(3),
+      lagrangePoints, gradientZones, overlapZones, emergingClusters,
+      // Active DTE weights for display
+      dteWeightsActive: { w0: +w0.toFixed(3), w1: +w1.toFixed(3), w2: +w2.toFixed(3) },
+      clusters: clusters.slice(0, 8).map(c => ({
+        strike: c.strike, mass: +c.mass.toFixed(0), dir: c.dir,
+        dynamics: c.dynamics, distATR: +c.distATR.toFixed(2),
+        netGEX: +c.netGEX.toFixed(0), role: c.role,
+        adjustedForce: +(c.adjustedForce||0).toFixed(3),
+      })),
+      pinnedCycles: GravState.pinnedCycles,
+      diagnostics: {
+        aboveMass:      +aboveMass.toFixed(0),
+        belowMass:      +belowMass.toFixed(0),
+        totalMass:      +totalMass.toFixed(0),
+        clusterCount:   clusters.length,
+        dissolvingFrac: +(dissolvingMass/totalMass).toFixed(3),
+        lagrangeCount:  lagrangePoints.length,
+        overlapCount:   overlapZones.length,
+        emergingCount:  emergingClusters.length,
+        hasHistory,
+        frac0: +frac0.toFixed(3), frac1: +frac1.toFixed(3), frac2: +frac2.toFixed(3),
+        peakContextual: +PEAK.toFixed(0),
+        usingByExpiry:  byExpiry.length > 0,
+        expiries,
+      },
+    };
+    GravState.lastResult   = _result;
+    GravState.lastResultTs = Date.now();
+    return _result;
+  } catch(e) {
+    log('SPYGRAVITY err: ' + e.message, 'err');
+    return GravState.lastResult;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SPYSTATIONS — Signal 3
+//
+//  One question: given the named structural levels and
+//  gravitationally-computed positions near the ship — which
+//  are active, what character are they showing, and what
+//  does that imply for the next move?
+//
+//  Two-layer architecture:
+//    buildStationMap()        — physics positions (30s, on gamma refresh)
+//    evaluateStationCharacter() — bar interaction history (5s)
+//
+//  Station types (in significance order):
+//    ORB_H/L  — opening range boundaries (1.00)
+//    PDH/PDL  — prior day high/low (1.00)
+//    SESS_H/L — session high/low (0.90)
+//    LAGRANGE — L1 balance points from SPYGRAVITY (0.80)
+//    OVERLAP  — compound cluster zones from SPYGRAVITY (0.80)
+//    GAMMA    — dominant gamma cluster strikes (0.85)
+//    EMERGING — sub-threshold growing clusters (0.65)
+//    ROUND    — prices ending in 0 or 5 (0.60)
+//
+//  Reads: row.bars, row.pdhl, row.quote + gravOutput from computeSPYGRAVITY
+//  Knows nothing about: EMA dynamics, field forces, flow
+// ═══════════════════════════════════════════════════════════
+
+const StationState = {
+  smoothScore:  0,
+  orbHigh:      0,
+  orbLow:       0,
+  orbSet:       false,
+  orbDate:      '',
+  sessHigh:     0,
+  sessLow:      0,
+  sessDate:     '',
+  barCharCache: {},  // {stationKey: {character, rejCount, lastBar}}
+};
+
+// ── ORB computation (first 30 min of session) ─────────────────────
+function updateORB(bars, todayStr) {
+  if (StationState.orbDate === todayStr && StationState.orbSet) return;
+  // Reset for new day
+  if (StationState.orbDate !== todayStr) {
+    StationState.orbHigh = 0; StationState.orbLow = 0;
+    StationState.orbSet  = false; StationState.orbDate = todayStr;
+    StationState.sessHigh = 0; StationState.sessLow = 0;
+    StationState.sessDate = todayStr;
+    StationState.barCharCache = {};
+  }
+  // ORB = first 30 bars of the session (Tradier returns bars in chronological order).
+  // Using bar index avoids timezone parsing issues — Tradier timestamps are ET strings
+  // but JS Date() treats them as local time, which breaks time-of-day filtering.
+  // ORB = 9:30-9:59 AM ET. Use timeStr (Tradier's ET string) directly — timezone-safe.
+  const orbBars = bars.filter(b => {
+    const t = (b.timeStr || '').split(' ')[1] || '';
+    const [h, m] = t.split(':').map(Number);
+    return h === 9 && m >= 30;  // 9:30-9:59 AM ET
+  });
+  if (orbBars.length >= 3) {
+    StationState.orbHigh = Math.max(...orbBars.map(b => b.h));
+    StationState.orbLow  = Math.min(...orbBars.map(b => b.l));
+    StationState.orbSet  = true;
+  } else if (bars.length >= 3) {
+    // Fallback: first 30 bars if timeStr not available (e.g. after-hours cached bars)
+    const fb = bars.slice(0, 30);
+    StationState.orbHigh = Math.max(...fb.map(b => b.h));
+    StationState.orbLow  = Math.min(...fb.map(b => b.l));
+  }
+}
+
+// ── Session high/low (running) ────────────────────────────────────
+function updateSessionHL(bars, todayStr) {
+  if (StationState.sessDate !== todayStr) {
+    StationState.sessHigh = 0; StationState.sessLow = 0;
+    StationState.sessDate = todayStr;
+  }
+  if (!bars || bars.length === 0) return;
+  const highs = bars.map(b => b.h);
+  const lows  = bars.map(b => b.l);
+  StationState.sessHigh = Math.max(...highs);
+  StationState.sessLow  = Math.min(...lows);
+}
+
+// ── Round number stations within range ───────────────────────────
+function roundStationsNear(px, atr) {
+  const stations = [];
+  const lo = Math.floor((px - 4 * atr) / 5) * 5;
+  const hi = Math.ceil((px  + 4 * atr) / 5) * 5;
+  for (let r = lo; r <= hi; r += 5) {
+    const dist = Math.abs(r - px) / atr;
+    if (dist <= 4.0 && dist > 0.02) {  // exclude current price
+      stations.push({ price: r, type: 'ROUND', significance: 0.60, distATR: dist });
+    }
+  }
+  return stations;
+}
+
+// ── Proximity weight (smooth, not stepped) ────────────────────────
+function proximityWeight(distATR) {
+  if (distATR > 2.0) return 0;
+  if (distATR > 1.0) return 2.0 - distATR;  // 0→1 as price approaches
+  return 1.0;
+}
+
+// ── Character evaluation from bars ───────────────────────────────
+// Examines last 20 bars at or near station price.
+// Returns {character, rejCount, confidence}
+function evaluateCharacter(stationPrice, bars, atr, key) {
+  const TOUCH_DIST = 0.25;  // bar must come within 0.25 ATR
+  const BREAK_DIST = 0.10;  // clean break = close past by 0.10 ATR
+
+  if (!bars || bars.length < 3) return { character: 'UNTESTED', rejCount: 0 };
+
+  const recent = bars.slice(-20);  // last 20 bars
+  const n      = recent.length;
+
+  let rejectionsAbove = 0;  // price below station, rejected upward push
+  let rejectionsBelow = 0;  // price above station, rejected downward push
+  let brokeAboveIdx   = -1;
+  let brokeBelowIdx   = -1;
+
+  recent.forEach((b, i) => {
+    const touchedAbove = b.h >= stationPrice - TOUCH_DIST * atr
+                      && b.h <= stationPrice + TOUCH_DIST * atr;
+    const touchedBelow = b.l <= stationPrice + TOUCH_DIST * atr
+                      && b.l >= stationPrice - TOUCH_DIST * atr;
+    const body       = Math.abs(b.c - b.o);
+    const upperWick  = b.h - Math.max(b.o, b.c);
+    const lowerWick  = Math.min(b.o, b.c) - b.l;
+
+    // Rejection from below (resistance): upper wick touches station, close stays below
+    if (touchedAbove && b.c < stationPrice - TOUCH_DIST * atr * 0.30) {
+      if (upperWick > body * 1.20) rejectionsAbove++;
+    }
+
+    // Rejection from above (support): lower wick touches station, close stays above
+    if (touchedBelow && b.c > stationPrice + TOUCH_DIST * atr * 0.30) {
+      if (lowerWick > body * 1.20) rejectionsBelow++;
+    }
+
+    // Break: full bar close through level by > BREAK_DIST ATR
+    if (b.o < stationPrice && b.c > stationPrice + BREAK_DIST * atr) brokeAboveIdx = i;
+    if (b.o > stationPrice && b.c < stationPrice - BREAK_DIST * atr) brokeBelowIdx = i;
+  });
+
+  // R2S: broke above, pulled back within 0.25 ATR, closed above again
+  let r2s = false, s2r = false;
+  if (brokeAboveIdx >= 0 && brokeAboveIdx <= n - 4) {
+    const afterBreak = recent.slice(brokeAboveIdx + 1);
+    const pulledBack = afterBreak.some(b => b.l < stationPrice + TOUCH_DIST * atr);
+    const heldAbove  = recent[n-1].c > stationPrice;
+    if (pulledBack && heldAbove) r2s = true;
+  }
+  if (brokeBelowIdx >= 0 && brokeBelowIdx <= n - 4) {
+    const afterBreak = recent.slice(brokeBelowIdx + 1);
+    const pulledBack = afterBreak.some(b => b.h > stationPrice - TOUCH_DIST * atr);
+    const heldBelow  = recent[n-1].c < stationPrice;
+    if (pulledBack && heldBelow) s2r = true;
+  }
+
+  let character;
+  if      (r2s)                      character = 'R2S';
+  else if (s2r)                      character = 'S2R';
+  else if (brokeAboveIdx === n-1
+        || (brokeAboveIdx >= n-5 && rejectionsAbove === 0))
+                                     character = 'BROKEN_UP';
+  else if (brokeBelowIdx === n-1
+        || (brokeBelowIdx >= n-5 && rejectionsBelow === 0))
+                                     character = 'BROKEN_DOWN';
+  else if (rejectionsAbove >= 2)     character = 'RESISTANCE';
+  else if (rejectionsBelow >= 2)     character = 'SUPPORT';
+  else                               character = 'UNTESTED';
+
+  return {
+    character,
+    rejCount: Math.max(rejectionsAbove, rejectionsBelow),
+  };
+}
+
+// ── Main compute ──────────────────────────────────────────────────
+function computeSPYSTATIONS(row, gravOutput) {
+  try {
+    const bars = row?.bars;
+    const px   = row?.quote?.last || (bars?.length ? bars[bars.length-1].c : 0);
+    if (!bars || bars.length < 10 || !px) return null;
+
+    const atr = calcATR(bars, 14);
+    if (!atr || atr < 0.005) return null;
+
+    const { hour: etHour, dateStr: todayStr } = etNow();
+
+    // ── Layer 1: Build station map ────────────────────────────────
+    updateORB(bars, todayStr);
+    updateSessionHL(bars, todayStr);
+
+    const pdh = row?.pdhl?.pdh || 0;
+    const pdl = row?.pdhl?.pdl || 0;
+
+    // Collect all candidate stations
+    const rawStations = [];
+
+    // Structural — ORB
+    if (StationState.orbHigh > 0)
+      rawStations.push({ price: StationState.orbHigh, type: 'ORB_H', significance: 1.00 });
+    if (StationState.orbLow > 0)
+      rawStations.push({ price: StationState.orbLow,  type: 'ORB_L', significance: 1.00 });
+
+    // Structural — PDH/PDL (from startup fetch)
+    if (pdh > 0) rawStations.push({ price: pdh, type: 'PDH', significance: 1.00 });
+    if (pdl > 0) rawStations.push({ price: pdl, type: 'PDL', significance: 1.00 });
+
+    // Structural — Session H/L (exclude if same as ORB)
+    const ORB_TOL = atr * 0.15;
+    if (StationState.sessHigh > 0 && Math.abs(StationState.sessHigh - StationState.orbHigh) > ORB_TOL)
+      rawStations.push({ price: StationState.sessHigh, type: 'SESS_H', significance: 0.90 });
+    if (StationState.sessLow > 0  && Math.abs(StationState.sessLow  - StationState.orbLow)  > ORB_TOL)
+      rawStations.push({ price: StationState.sessLow,  type: 'SESS_L', significance: 0.90 });
+
+    // Gravitational — from SPYGRAVITY output
+    if (gravOutput) {
+      // Significant gamma clusters
+      (gravOutput.clusters || []).forEach(c => {
+        rawStations.push({ price: c.strike, type: 'GAMMA', significance: 0.85,
+                           meta: { dynamics: c.dynamics, role: c.role } });
+      });
+
+      // Lagrange points
+      (gravOutput.lagrangePoints || []).forEach(l => {
+        rawStations.push({ price: l.price, type: 'LAGRANGE', significance: 0.80,
+                           meta: { stability: l.stability } });
+      });
+
+      // Overlap zones
+      (gravOutput.overlapZones || []).forEach(z => {
+        rawStations.push({ price: z.price, type: 'OVERLAP', significance: 0.80,
+                           meta: { compoundMass: z.compoundMass } });
+      });
+
+      // Emerging clusters (significance scales with growth)
+      (gravOutput.emergingClusters || []).filter(e => e.growthRate > 0.10).forEach(e => {
+        rawStations.push({ price: e.strike, type: 'EMERGING', significance: 0.65,
+                           meta: { imminent: e.imminent, growthRate: e.growthRate } });
+      });
+    }
+
+    // Round numbers
+    roundStationsNear(px, atr).forEach(s => rawStations.push(s));
+
+    // OI_INSTITUTIONAL: overnight OI shifts > 500 contracts = institutional positioning
+    // These are pre-session levels where large positions opened or rolled.
+    // High significance (0.90) — they matter from open, fade as intraday action dominates.
+    const instLevels = row?.oiStruct?.institutionalLevels || [];
+    const { sessionPhase: sp } = timeCtx || {};
+    const instSig = sp === 'AFTERNOON' || sp === 'CLOSING' ? 0.65 : 0.90;
+    instLevels.forEach(lvl => {
+      if (Math.abs(lvl.strike - px) / atr <= 8.0) {
+        rawStations.push({
+          price:        lvl.strike,
+          type:         'OI_INSTITUTIONAL',
+          significance: lvl.significance * instSig,
+          isCall:       lvl.isCall,
+          oiDiff:       lvl.oiDiff,
+          aggressive:   lvl.aggressive,
+        });
+      }
+    });
+
+    // ── Deduplicate: merge stations within 0.20 ATR of each other ─
+    // Keep highest significance when merging
+    const merged = [];
+    rawStations.forEach(s => {
+      const d = Math.abs(s.price - px) / atr;
+      if (d > 4.0) return;  // beyond range
+      const existing = merged.find(m => Math.abs(m.price - s.price) / atr < 0.20);
+      if (existing) {
+        if (s.significance > existing.significance) {
+          existing.price = s.price;
+          existing.type  = s.type;
+          existing.significance = s.significance;
+          existing.meta  = s.meta;
+        }
+      } else {
+        merged.push({ ...s, distATR: d });
+      }
+    });
+
+    // ── Layer 2: Evaluate character from bar interaction ──────────
+    const stations = merged.map(s => {
+      const pw  = proximityWeight(s.distATR);
+      const key = s.type + '_' + s.price.toFixed(2);
+      const { character, rejCount } = pw > 0
+        ? evaluateCharacter(s.price, bars, atr, key)
+        : { character: 'UNTESTED', rejCount: 0 };
+
+      // Directional vote
+      const sigW = s.significance * pw;
+      let vote = 0;
+      switch (character) {
+        case 'R2S':         vote = +sigW * 1.30; break;
+        case 'SUPPORT':     vote = +sigW;         break;
+        case 'BROKEN_UP':   vote = +sigW * 0.30;  break;
+        case 'S2R':         vote = -sigW * 1.30;  break;
+        case 'RESISTANCE':  vote = -sigW;          break;
+        case 'BROKEN_DOWN': vote = -sigW * 0.30;  break;
+        default:            vote = 0;
+      }
+
+      return { ...s, character, rejCount, proximityWeight: pw, vote };
+    }).sort((a, b) => a.distATR - b.distATR);  // nearest first
+
+    // ── Score computation ─────────────────────────────────────────
+    const activeStations = stations.filter(s =>
+      s.proximityWeight > 0 && s.character !== 'UNTESTED' && s.character !== 'EMERGING'
+    );
+
+    const totalWeight = activeStations.reduce((s, st) => s + st.significance * st.proximityWeight, 0);
+    const rawScore    = totalWeight > 0
+      ? clamp(activeStations.reduce((s, st) => s + st.vote, 0) / totalWeight, -1, 1)
+      : 0;
+
+    StationState.smoothScore = smooth(StationState.smoothScore, rawScore, 0.35);
+    const finalScore = clamp(StationState.smoothScore, -1, 1);
+
+    // ── Confidence model ──────────────────────────────────────────
+    const activeCnt = activeStations.length;
+    let conf = activeCnt === 0 ? 0.00
+             : activeCnt === 1 ? 0.50
+             : activeCnt === 2 ? 0.65
+             : 0.75;
+
+    // R2S/S2R within 0.5 ATR = highest quality
+    const r2sClose = stations.some(s =>
+      (s.character === 'R2S' || s.character === 'S2R') && s.distATR < 0.50
+    );
+    if (r2sClose) conf += 0.15;
+
+    // Additional rejection tests boost confidence
+    const maxRej = Math.max(0, ...activeStations.map(s => s.rejCount));
+    conf += Math.min(0.10, (maxRej - 2) * 0.05);
+
+    // Untested dominant = uncertainty
+    if (activeCnt > 0 && activeStations.every(s => s.character === 'UNTESTED'))
+      conf -= 0.20;
+
+    // All broken = in-between territory
+    const allBroken = activeStations.length > 0 && activeStations.every(
+      s => s.character === 'BROKEN_UP' || s.character === 'BROKEN_DOWN'
+    );
+    if (allBroken) conf -= 0.10;
+
+    // Agreement: all active same direction
+    const bullVotes = activeStations.filter(s => s.vote > 0).length;
+    const bearVotes = activeStations.filter(s => s.vote < 0).length;
+    if (activeCnt > 1 && (bullVotes === activeCnt || bearVotes === activeCnt))
+      conf += 0.10;
+    else if (bullVotes > 0 && bearVotes > 0)
+      conf -= 0.05;
+
+    // Lagrange point nearby = binary snap uncertainty
+    const nearLagrange = stations.some(s => s.type === 'LAGRANGE' && s.distATR < 0.40);
+    if (nearLagrange) conf -= 0.10;
+
+    conf = clamp(conf, 0, 1.0);
+
+    // ── State ─────────────────────────────────────────────────────
+    const state = activeCnt === 0       ? 'POSITION'
+                : conf < 0.35           ? 'POSITION'
+                : finalScore >= 0.40    ? 'BULL'
+                : finalScore <= -0.40   ? 'BEAR'
+                : 'POSITION';
+
+    // ── Key flags ─────────────────────────────────────────────────
+    const r2sActive   = stations.some(s => s.character === 'R2S'  && s.distATR < 1.0);
+    const s2rActive   = stations.some(s => s.character === 'S2R'  && s.distATR < 1.0);
+    const wallApproach= stations.some(s =>
+      (s.character === 'RESISTANCE' || s.character === 'S2R') && s.distATR < 0.50
+    );
+    const floorApproach = stations.some(s =>
+      (s.character === 'SUPPORT' || s.character === 'R2S') && s.distATR < 0.50
+    );
+    const snapZone = stations.some(s => s.distATR < 0.15);
+    const nearest  = stations[0] || null;
+
+    return {
+      score:    +finalScore.toFixed(3),
+      conf:     +conf.toFixed(3),
+      state,
+      nearest:  nearest ? {
+        price:        nearest.price,
+        type:         nearest.type,
+        character:    nearest.character,
+        distATR:      +nearest.distATR.toFixed(2),
+        significance: nearest.significance,
+      } : null,
+      activeStations: activeStations.slice(0, 6),
+      allStations:    stations.slice(0, 10),
+      r2sActive,
+      s2rActive,
+      wallApproach,
+      floorApproach,
+      snapZone,
+      diagnostics: {
+        orbHigh: +StationState.orbHigh.toFixed(2),
+        orbLow:  +StationState.orbLow.toFixed(2),
+        pdh:     +(row?.pdhl?.pdh || 0).toFixed(2),
+        pdl:     +(row?.pdhl?.pdl || 0).toFixed(2),
+        sessHigh: +StationState.sessHigh.toFixed(2),
+        sessLow:  +StationState.sessLow.toFixed(2),
+        stationCount: stations.length,
+        activeCount:  activeCnt,
+        nearLagrange,
+      },
+    };
+  } catch(e) {
+    log('SPYSTATIONS err: ' + e.message, 'err');
+    return null;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  SPYFUEL — Signal 4
+//
+//  One question: is there enough institutional fuel aligned
+//  with a potential move, and is the field expanding or collapsing?
+//
+//  Non-linear model — the interaction between dimensions
+//  reveals what the flow MEANS, not just what it IS:
+//
+//  Five interaction terms:
+//    1. Urgency tensor     — capital × time compression (0DTE)
+//    2. Capital intensity  — premium × gamma density (OTM depth)
+//    3. DTE stack score    — cross-layer coherence
+//    4. Sweep acceleration — rate of change of flow arrival
+//    5. Moneyness vector   — deepening OTM vs covering ITM
+//
+//  Fuel ignition states:
+//    BURNING      — coherent, locked, accelerating
+//    PRE_IGNITION — building but not yet burned
+//    FADING       — direction maintained, fuel depleting
+//    COLLAPSED    — direction flip or sharp coherence drop
+//    QUIET        — no institutional flow
+//
+//  Reads: row.flow.alerts + row.dealer.netPrem
+//  Knows nothing about: EMAs, gamma fields, named levels
+// ═══════════════════════════════════════════════════════════
+
+const FuelState = {
+  smoothScore:    0,
+  lockCount:      0,
+  lockDir:        0,
+  prevDir:        0,
+  flipCount:      0,
+  netPremHistory: [],
+  sweepHistory:   [],
+  // Physics momentum fields
+  momentumState:  'QUIET',   // current committed state (has inertia)
+  momentumDir:    0,          // direction of current momentum (+1 call / -1 put)
+  momentumDecay:  0,          // cycles without reinforcement (drives slow degradation)
+  contraryMass:   0,          // accumulated contrary premium (drives COLLAPSED)
+  contraryDir:    0,          // direction of contrary flow
+  contraryBars:   0,          // bars of sustained contrary flow
+  greekFlowHist:  [],         // [{ts, dirDelta}] for greek flow sub-signal
+};
+
+// ── Compute SPYFUEL ───────────────────────────────────────────────
+function computeSPYFUEL(row) {
+  try {
+    const alerts  = row?.flow?.alerts;   // enriched by fetchFlow
+    const netPremData  = row?.dealer?.netPrem;      // raw ticks [{net_call_premium, tape_time, ...}]
+    const cumNetDelta  = row?.dealer?.cumNetDelta ?? null;  // session cumulative net delta
+    const cumCallPrem  = row?.dealer?.cumCallPrem  ?? null;  // session cumulative net call premium
+    const nopeData     = row?.dealer?.nope;         // [{nope, nope_fill, call_delta, put_delta, timestamp}]
+    const litData      = row?.dark?.lit;            // [{price, size, premium, executed_at, market_center}]
+    const marketTime   = row?.state?.marketTime || 'unknown';
+    const isRegularHours = marketTime === 'regular' || marketTime === 'unknown';
+
+    if (!alerts) return null;
+
+    const nowMs    = Date.now();
+    const px       = row?.quote?.last || 0;
+    const atr      = row?.bars ? calcATR(row.bars, 14) : 1.0;
+    const { hour: etHour } = etNow();
+
+    // 0DTE time compression (same as SPYGRAVITY)
+    const timeCompression = Math.min(1 / Math.max(16.0 - etHour, 0.25), 8.0);
+
+    // ── Filter qualifying sweeps ──────────────────────────────────
+    // Qualifying: premium ≥ $50k AND (has_sweep OR premium ≥ $200k) AND DTE ≤ 5
+    // Only count sweeps during regular market hours — pre/post market are noise.
+    const WINDOW_MS = 60 * 60 * 1000;   // 60-minute window
+    const qualiRows = alerts.filter(r =>
+      r.qualifying && r.ageMs <= WINDOW_MS && r.dir !== 0 && isRegularHours
+    );
+
+    // ── Per-sweep scoring — five dimensions ───────────────────────
+    function scoreSweep(r) {
+      // Dim 1 — Urgency tensor: capital × time compression (0DTE only)
+      const urgency = r.dte === 0
+        ? r.prem * timeCompression * 0.001   // normalize: $1M × 4.0 → 4000
+        : r.prem * 0.001;
+
+      // Dim 2 — Capital intensity: gamma density per dollar
+      const otmDist   = px > 0 ? Math.abs(r.strike - px) / atr : 0;
+      const gammaDens = otmDist > 1.5 ? 1.50 : otmDist > 0.5 ? 1.00 : 0.60;
+      const capInt    = r.premTier * gammaDens;
+
+      // Dim 3 — DTE weight (handled in stack score globally, per-sweep uses tier)
+      const dteW = r.dte === 0 ? 1.00
+                 : r.dte === 1 ? 0.70
+                 : r.dte <= 5  ? 0.50 : 0.25;
+
+      // Dim 4 — Recency: 30-min half-life exponential decay
+      const recency = Math.exp(-r.ageMs / (30 * 60 * 1000));
+
+      // Moneyness directional weight
+      // OTM in sweep direction = pure directional intent
+      const abovePrice = r.strike > px;
+      const moneynessW = r.dir === 1
+        ? (abovePrice ? 1.00 : 0.30)   // call: OTM above = directional, ITM = likely closing
+        : (!abovePrice ? 1.00 : 0.20); // put:  OTM below = directional, OTM above = hedge
+
+      // Composite sweep score (non-linear product, not sum)
+      return urgency * capInt * dteW * recency * moneynessW;
+    }
+
+    // Accumulate fuel per direction
+    let callFuel = 0, putFuel = 0;
+    let callCount0 = 0, callCount1 = 0, callCount2p = 0;
+    let putCount0  = 0, putCount1  = 0, putCount2p  = 0;
+    let callPremSum = 0, putPremSum = 0;
+
+    const recentWindow = 20 * 60 * 1000;   // 20 min for recent sub-windows
+    const recentRows   = qualiRows.filter(r => r.ageMs <= recentWindow);
+    const priorRows    = qualiRows.filter(r => r.ageMs > recentWindow && r.ageMs <= WINDOW_MS);
+
+    qualiRows.forEach(r => {
+      const sc = scoreSweep(r);
+      if (r.dir === 1) {
+        callFuel += sc;
+        callPremSum += r.prem;
+        if (r.dte === 0) callCount0++;
+        else if (r.dte === 1) callCount1++;
+        else callCount2p++;
+      } else {
+        putFuel += sc;
+        putPremSum += r.prem;
+        if (r.dte === 0) putCount0++;
+        else if (r.dte === 1) putCount1++;
+        else putCount2p++;
+      }
+    });
+
+    const totalFuel    = callFuel + putFuel;
+    const qualifyingN  = qualiRows.length;
+
+    // Base directional vector
+    const baseVector = totalFuel > 0
+      ? clamp((callFuel - putFuel) / totalFuel, -1, 1) : 0;
+
+    // ── Interaction Term 3: DTE Stack Score ───────────────────────
+    // Which direction has more DTE layers represented?
+    function stackScore(c0, c1, c2p) {
+      const layers = (c0 > 0 ? 1 : 0) + (c1 > 0 ? 1 : 0) + (c2p > 0 ? 1 : 0);
+      return layers === 3 ? 1.00
+           : layers === 2 ? (c0 > 0 && c1 > 0 ? 0.70 : 0.60)
+           : layers === 1 ? (c0 > 0 ? 0.40 : c1 > 0 ? 0.35 : 0.25)
+           : 0.05;
+    }
+    const callStack = stackScore(callCount0, callCount1, callCount2p);
+    const putStack  = stackScore(putCount0,  putCount1,  putCount2p);
+    // Stack score in the direction of baseVector
+    const dominantStack = baseVector >= 0 ? callStack : putStack;
+
+    // ── Interaction Term 4: Sweep Acceleration ───────────────────
+    // Rate of qualifying sweeps in last 10 min vs prior 10 min
+    const w10 = 10 * 60 * 1000;
+    const recent10_call  = qualiRows.filter(r => r.dir === 1 && r.ageMs <= w10).length;
+    const recent10_put   = qualiRows.filter(r => r.dir === -1 && r.ageMs <= w10).length;
+    const prior10_call   = qualiRows.filter(r => r.dir === 1  && r.ageMs > w10 && r.ageMs <= w10*2).length;
+    const prior10_put    = qualiRows.filter(r => r.dir === -1 && r.ageMs > w10 && r.ageMs <= w10*2).length;
+
+    const accel_call = prior10_call > 0 ? (recent10_call - prior10_call) / prior10_call : (recent10_call > 0 ? 0.5 : 0);
+    const accel_put  = prior10_put  > 0 ? (recent10_put  - prior10_put)  / prior10_put  : (recent10_put  > 0 ? 0.5 : 0);
+    const sweepAccel = baseVector >= 0 ? accel_call : accel_put;
+
+    // ── Interaction Term 5: Moneyness Vector ─────────────────────
+    // Is flow migrating deeper OTM (building conviction) or toward ITM (covering)?
+    function avgOTM(rows) {
+      if (rows.length === 0 || px === 0) return 0;
+      return rows.reduce((s, r) => s + Math.abs(r.strike - px) / atr, 0) / rows.length;
+    }
+    const recentCalls = recentRows.filter(r => r.dir === 1);
+    const priorCalls  = priorRows.filter(r => r.dir === 1);
+    const recentPuts  = recentRows.filter(r => r.dir === -1);
+    const priorPuts   = priorRows.filter(r => r.dir === -1);
+
+    const moneynessVecCall = avgOTM(recentCalls) - avgOTM(priorCalls);
+    const moneynessVecPut  = avgOTM(recentPuts)  - avgOTM(priorPuts);
+    const moneynessVector  = baseVector >= 0 ? moneynessVecCall : moneynessVecPut;
+
+    // ── Size escalation ───────────────────────────────────────────
+    const recentDomPrem = (baseVector >= 0 ? recentCalls : recentPuts)
+      .map(r => r.prem).slice(-5);
+    const priorDomPrem  = (baseVector >= 0 ? priorCalls : priorPuts)
+      .map(r => r.prem).slice(-5);
+    const avgRecPrem = recentDomPrem.length ? recentDomPrem.reduce((a,v)=>a+v,0)/recentDomPrem.length : 0;
+    const avgPriPrem = priorDomPrem.length  ? priorDomPrem.reduce((a,v)=>a+v,0)/priorDomPrem.length   : 0;
+    const sizeEscalation = avgPriPrem > 0 ? (avgRecPrem - avgPriPrem) / avgPriPrem : 0;
+
+    // ── Urgency tensor (aggregate, 0DTE only) ─────────────────────
+    const urgencyTensor = qualiRows.filter(r => r.dte === 0)
+      .reduce((s, r) => s + r.prem * timeCompression * 0.001, 0);
+
+    // ── Coherence multiplier ──────────────────────────────────────
+    // Non-linear: all five terms amplify or dampen the base signal
+    const coherenceMult = clamp(
+      dominantStack
+        * (1 + clamp(sweepAccel,    -0.80, 1.0) * 0.50)
+        * (1 + clamp(sizeEscalation,-0.50, 1.0) * 0.30)
+        * (1 + clamp(moneynessVector,-1.0, 1.0) * 0.25),
+      0.05, 3.0
+    );
+
+    const coherentFuel = clamp(baseVector * coherenceMult, -1, 1);
+
+    // ── Net premium momentum ──────────────────────────────────────
+    let netPremScore = 0, netPremMomentum = 0, netPremLevel = 0;
+    // Use session-cumulative net call premium (correct per UW docs — ticks are increments).
+    // Push cumulative value each cycle rather than single latest tick.
+    if (cumCallPrem !== null) {
+      FuelState.netPremHistory.push(cumCallPrem);
+      if (FuelState.netPremHistory.length > 20) FuelState.netPremHistory.shift();
+
+      const hist    = FuelState.netPremHistory;
+      const norm    = Math.max(1, ...hist.map(Math.abs));
+      const recent3 = hist.slice(-3).reduce((a,v)=>a+v,0) / 3;
+      const prior6  = hist.length >= 9 ? hist.slice(-9,-3).reduce((a,v)=>a+v,0)/6 : recent3;
+      netPremLevel    = clamp(recent3 / norm, -1, 1);
+      netPremMomentum = clamp((recent3 - prior6) / norm, -1, 1);
+      netPremScore    = netPremLevel * 0.60 + netPremMomentum * 0.40;
+    } else if (netPremData && netPremData.length >= 4) {
+      // Fallback to raw tick if cumulative not available
+      FuelState.netPremHistory.push(parseFloat(netPremData[netPremData.length-1].net_call_premium) || 0);
+      if (FuelState.netPremHistory.length > 20) FuelState.netPremHistory.shift();
+      const hist = FuelState.netPremHistory;
+      const norm = Math.max(1, ...hist.map(Math.abs));
+      const recent3 = hist.slice(-3).reduce((a,v)=>a+v,0)/3;
+      const prior6  = hist.length >= 9 ? hist.slice(-9,-3).reduce((a,v)=>a+v,0)/6 : recent3;
+      netPremLevel    = clamp(recent3/norm,-1,1);
+      netPremMomentum = clamp((recent3-prior6)/norm,-1,1);
+      netPremScore    = netPremLevel*0.60 + netPremMomentum*0.40;
+    }
+
+    // ── Dealer mechanics ──────────────────────────────────────────
+    // NOPE = (call_delta - put_delta) / stock_vol per minute.
+    // Typical values: -0.001 to +0.001 for SPY. Scale × 1000 to get -1..+1 range.
+    // Positive = more calls traded (bullish hedging), negative = more puts (bearish).
+    let dealerScore = 0, hasNOPE = false;
+    if (nopeData && nopeData.length > 0) {
+      const latest = nopeData[nopeData.length - 1];
+      const nope   = parseFloat(latest.nope || 0);
+      if (Math.abs(nope) > 0) {
+        dealerScore = clamp(nope * 1000, -1, 1);
+        hasNOPE = true;
+      }
+    }
+    if (!hasNOPE && cumNetDelta !== null && cumNetDelta !== 0) {
+      const totalVol = row?.state?.totalVolume || 1_000_000;
+      const normDelta = clamp(cumNetDelta / totalVol, -1, 1);
+      dealerScore = normDelta * 0.80;
+      hasNOPE = true;
+    }
+    // Greek flow bias — augments dealer score when 0DTE flow confirms direction
+    if (Math.abs(greekFlowBias) > 0.10) {
+      // Blend: greek flow is real-time dealer hedge activity (high value)
+      // Weight: 0.30 greek flow, 0.70 existing dealer score
+      dealerScore = clamp(dealerScore * 0.70 + greekFlowBias * 0.30, -1, 1);
+    }
+    if (!hasNOPE) {
+      dealerScore = netPremMomentum * 0.60;
+    }
+
+    // ── Direction lock tracking ───────────────────────────────────
+    const currentDir = baseVector > 0.05 ? 1 : baseVector < -0.05 ? -1 : 0;
+    if (currentDir !== 0 && currentDir === FuelState.lockDir) {
+      FuelState.lockCount++;
+    } else if (currentDir !== 0 && currentDir !== FuelState.lockDir) {
+      FuelState.flipCount++;
+      if (FuelState.flipCount >= 3) {
+        FuelState.lockDir    = currentDir;
+        FuelState.lockCount  = 1;
+        FuelState.flipCount  = 0;
+      }
+    } else {
+      FuelState.flipCount = 0;
+    }
+    const sweepLocked = FuelState.lockCount >= 5;   // 5 readings = ~2.5 min at 30s
+    const dirFlip     = FuelState.flipCount >= 2;
+
+    // ── Greek flow sub-signal (item 11) ──────────────────────────
+    // dir_delta_flow: per-minute net dealer delta for 0DTE expiry.
+    // Positive = dealers buying (bullish), negative = selling (bearish).
+    const greekFlowData = row?.gamma?.greekFlow || [];
+    let greekFlowBias = 0;
+    if (greekFlowData.length > 0) {
+      const recent = greekFlowData.slice(-5);  // last 5 minutes
+      const avgDirDelta = recent.reduce((s, g) =>
+        s + (parseFloat(g.dir_delta_flow) || 0), 0) / recent.length;
+      const maxAbs = Math.max(1, ...greekFlowData.map(g => Math.abs(parseFloat(g.dir_delta_flow)||0)));
+      greekFlowBias = clamp(avgDirDelta / maxAbs, -1, 1);
+
+      // Update history for trend
+      FuelState.greekFlowHist.push({ ts: Date.now(), dirDelta: avgDirDelta });
+      if (FuelState.greekFlowHist.length > 20) FuelState.greekFlowHist.shift();
+    }
+
+    // ── Physics-based fuel state (object in motion stays in motion) ──
+    // Expansion and collapse signals
+    const expSignal    = sweepAccel > 0.15 && sizeEscalation > 0.10 && moneynessVector > 0.10;
+    const collapseRisk = sweepAccel < -0.20 && sizeEscalation < -0.10 && moneynessVector < -0.10;
+
+    // Contrary flow detection — requires active premium flow in opposite direction
+    // (not just absence of confirming flow — an object at rest stays at rest)
+    // currentDir already declared above in direction lock tracking
+    const isContrary = currentDir !== 0 && FuelState.momentumDir !== 0 &&
+                       currentDir !== FuelState.momentumDir;
+    const contraryPremium = isContrary ? Math.abs(baseVector) * (callFuel + putFuel) : 0;
+
+    if (isContrary && contraryPremium > 0) {
+      if (FuelState.contraryDir === currentDir) {
+        FuelState.contraryMass += contraryPremium;
+        FuelState.contraryBars++;
+      } else {
+        FuelState.contraryDir  = currentDir;
+        FuelState.contraryMass = contraryPremium;
+        FuelState.contraryBars = 1;
+      }
+    } else {
+      // No active contrary flow — decay contrary accumulation
+      FuelState.contraryMass *= 0.70;
+      FuelState.contraryBars  = Math.max(0, FuelState.contraryBars - 1);
+    }
+
+    // COLLAPSED only fires when ACTIVE contrary flow is substantial AND sustained
+    // (≥3 bars + significant premium) — not just absence of confirming sweeps
+    const activeCollapse = FuelState.contraryBars >= 3 &&
+                           FuelState.contraryMass > 0.50 &&
+                           (dirFlip && Math.abs(baseVector) > 0.30);
+
+    // Momentum state machine with inertia
+    let fuelState;
+    const prev = FuelState.momentumState;
+
+    if (qualifyingN === 0 && prev === 'QUIET') {
+      // No sweeps, was already quiet — stay quiet
+      fuelState = 'QUIET';
+      FuelState.momentumDir   = 0;
+      FuelState.momentumDecay = 0;
+    } else if (activeCollapse) {
+      // Active contrary flow confirmed — genuine collapse
+      fuelState = 'COLLAPSED';
+      FuelState.momentumDir   = currentDir;
+      FuelState.momentumDecay = 0;
+    } else if (sweepLocked && coherenceMult > 1.20 && sweepAccel >= 0) {
+      // Active BURNING signal — fully confirmed
+      fuelState = 'BURNING';
+      FuelState.momentumDir   = currentDir;
+      FuelState.momentumDecay = 0;
+    } else if (expSignal && qualifyingN >= 3) {
+      fuelState = 'PRE_IGNITION';
+      FuelState.momentumDir   = currentDir;
+      FuelState.momentumDecay = 0;
+    } else if (qualifyingN > 0 && !collapseRisk) {
+      // Sweeps present but not burning/igniting
+      fuelState = 'PRE_IGNITION';
+      FuelState.momentumDir   = currentDir || FuelState.momentumDir;
+      FuelState.momentumDecay = 0;
+    } else if (prev !== 'QUIET' && prev !== 'COLLAPSED') {
+      // No new sweeps — momentum physics: state persists, decays slowly
+      // An object in motion stays in motion — fading only from time passage
+      FuelState.momentumDecay++;
+      if (collapseRisk) {
+        fuelState = prev === 'BURNING' ? 'FADING' : 'FADING';
+      } else if (FuelState.momentumDecay < 8) {
+        // Hold prior state for up to 8 cycles (~8 min at 60s dealer refresh)
+        fuelState = prev === 'BURNING' ? 'FADING' : prev;  // BURNING → FADING immediately
+      } else if (FuelState.momentumDecay < 20) {
+        fuelState = 'FADING';   // extended degradation
+      } else {
+        fuelState = 'QUIET';    // finally exhausted
+        FuelState.momentumDir = 0;
+      }
+    } else {
+      fuelState = qualifyingN === 0 ? 'QUIET' : 'PRE_IGNITION';
+      if (qualifyingN > 0) FuelState.momentumDir = currentDir;
+    }
+
+    FuelState.momentumState = fuelState;
+
+    // ── Fuel type (time horizon) ──────────────────────────────────
+    const totalCount = callCount0+callCount1+callCount2p+putCount0+putCount1+putCount2p;
+    const frac0DTE = totalCount > 0 ? (callCount0 + putCount0) / totalCount : 0;
+    const frac2pDTE = totalCount > 0 ? (callCount2p + putCount2p) / totalCount : 0;
+    const fuelType  = qualifyingN === 0 ? 'NONE'
+                    : frac0DTE > 0.70   ? 'TACTICAL'
+                    : frac2pDTE > 0.50  ? 'STRATEGIC'
+                    : 'MIXED';
+
+    // ── Final non-linear score ────────────────────────────────────
+    const netPremFactor = 1 + (Math.sign(netPremScore) === Math.sign(baseVector) && Math.abs(netPremScore) > 0.05 ? 0.15 : -0.05);
+    const dealerFactor  = 1 + (Math.sign(dealerScore)  === Math.sign(baseVector) && Math.abs(dealerScore)  > 0.05 ? 0.12 : -0.04);
+
+    // Greek flow amplification — when greek flow confirms direction, boost signal
+    const greekFlowFactor = Math.abs(greekFlowBias) > 0.10
+      && Math.sign(greekFlowBias) === Math.sign(baseVector)
+      ? (1 + Math.abs(greekFlowBias) * 0.25)  // up to +25% when strongly confirmed
+      : 1.0;
+
+    const rawScore = fuelState === 'QUIET' || fuelState === 'COLLAPSED' ? 0
+      : clamp(coherentFuel * netPremFactor * dealerFactor * greekFlowFactor, -1, 1);
+
+    FuelState.smoothScore = smooth(FuelState.smoothScore, rawScore, 0.25);
+    const finalScore = clamp(FuelState.smoothScore, -1, 1);
+
+    // ── Confidence ────────────────────────────────────────────────
+    let conf = fuelState === 'BURNING'      ? 0.75
+             : fuelState === 'PRE_IGNITION' ? 0.60
+             : fuelState === 'FADING'       ? 0.45
+             : fuelState === 'COLLAPSED'    ? 0.25
+             : 0.00;
+
+    if (dominantStack > 0.70) conf += 0.10;
+    if (coherenceMult > 1.5)  conf += 0.10;
+    const allAgree = Math.sign(netPremScore) === Math.sign(baseVector)
+                  && Math.sign(dealerScore)  === Math.sign(baseVector);
+    if (allAgree) conf += 0.05;
+    if (!hasNOPE)              conf -= 0.08;
+    if (qualifyingN < 3)       conf -= 0.10;
+    if (sweepLocked)           conf += 0.08;
+    conf = clamp(conf, 0, 1.0);
+
+    const state = fuelState === 'QUIET' || conf < 0.35 ? 'POSITION'
+                : finalScore >= 0.40 ? 'BULL'
+                : finalScore <= -0.40 ? 'BEAR'
+                : 'POSITION';
+
+    // Top qualifying sweep
+    const topSweep = qualiRows.length > 0
+      ? qualiRows.reduce((b, r) => (!b || r.prem > b.prem) ? r : b, null)
+      : null;
+
+    return {
+      score:    +finalScore.toFixed(3),
+      conf:     +conf.toFixed(3),
+      state,
+      fuelState,
+      fuelType,
+      // Five interaction terms
+      urgencyTensor:   +urgencyTensor.toFixed(1),
+      stackScore:      +dominantStack.toFixed(3),
+      coherenceMult:   +coherenceMult.toFixed(3),
+      sweepAccel:      +sweepAccel.toFixed(3),
+      sizeEscalation:  +sizeEscalation.toFixed(3),
+      moneynessVector: +moneynessVector.toFixed(3),
+      // Base signals
+      baseVector:      +baseVector.toFixed(3),
+      netPremScore:    +netPremScore.toFixed(3),
+      dealerScore:     +dealerScore.toFixed(3),
+      // State
+      sweepLocked,
+      collapseRisk,
+      activeCollapse,
+      expansionSignal: expSignal,
+      hasNOPE,
+      greekFlowBias:   +greekFlowBias.toFixed(3),
+      // Counts
+      sweepCount:  qualifyingN,
+      callFuel:    +callFuel.toFixed(2),
+      putFuel:     +putFuel.toFixed(2),
+      frac0DTE:    +frac0DTE.toFixed(3),
+      frac2pDTE:   +frac2pDTE.toFixed(3),
+      topSweep: topSweep ? {
+        premium: topSweep.prem,
+        type:    topSweep.dir > 0 ? 'CALL' : 'PUT',
+        strike:  topSweep.strike,
+        dte:     topSweep.dte,
+        ageMin:  +(topSweep.ageMs / 60000).toFixed(1),
+      } : null,
+      diagnostics: {
+        callCount: qualiRows.filter(r=>r.dir===1).length,
+        putCount:  qualiRows.filter(r=>r.dir===-1).length,
+        netPremLevel:    +netPremLevel.toFixed(3),
+        netPremMomentum: +netPremMomentum.toFixed(3),
+        lockCount:       FuelState.lockCount,
+        flipCount:       FuelState.flipCount,
+        accel_call:      +accel_call.toFixed(3),
+        accel_put:       +accel_put.toFixed(3),
+        callStack:       +callStack.toFixed(2),
+        putStack:        +putStack.toFixed(2),
+      },
+    };
+  } catch(e) {
+    log('SPYFUEL err: ' + e.message, 'err');
+    return null;
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  SPYCOMMAND — Synthesis
+//
+//  Weaves SPYSHIP + SPYGRAVITY + SPYSTATIONS + SPYFUEL into
+//  three command outputs:
+//
+//    SPEED:       STOP | IDLE | THRUST | FULL
+//    DIRECTION:   CALL | PUT
+//    DESTINATION: nearest price attractor in travel direction
+//
+//  Plus ordered advisories from all four signals.
+//
+//  Signal weights:
+//    SPYGRAVITY  0.35  (field defines the space)
+//    SPYSHIP     0.25  (ship's current momentum)
+//    SPYSTATIONS 0.20  (structural context)
+//    SPYFUEL     0.20  (institutional commitment)
+// ═══════════════════════════════════════════════════════════
+
+// ── Destination finder ────────────────────────────────────────────
+function findDestination(direction, grav, sta, px, atr) {
+  if (!px || atr < 0.001) return null;
+  const targets = [];
+
+  if (direction === 'CALL') {
+    // Attractors ABOVE price in travel direction
+    (grav?.clusters || [])
+      .filter(c => c.dir > 0 && c.dynamics !== 'DISSOLVING')
+      .forEach(c => targets.push({
+        price: c.strike, dist: c.distATR,
+        type: 'GAMMA', quality: c.dynamics === 'BUILDING' ? 'strong' : 'normal',
+        label: 'γ ' + c.dynamics.slice(0,4),
+      }));
+    (grav?.lagrangePoints || [])
+      .filter(l => l.price > px)
+      .forEach(l => targets.push({
+        price: l.price, dist: l.distATR,
+        type: 'L1', quality: 'decision',
+        label: 'L1 ' + l.stability.slice(0,4),
+      }));
+    (sta?.allStations || [])
+      .filter(s => s.price > px
+        && (s.character === 'R2S' || s.character === 'BROKEN_UP'
+          || s.type === 'PDH' || s.type === 'ORB_H' || s.type === 'ROUND'))
+      .forEach(s => targets.push({
+        price: s.price, dist: s.distATR,
+        type: s.type, quality: s.character === 'R2S' ? 'strong' : 'normal',
+        label: s.type.replace('_',' '),
+      }));
+  } else {
+    // Attractors BELOW price
+    (grav?.clusters || [])
+      .filter(c => c.dir < 0 && c.dynamics !== 'DISSOLVING')
+      .forEach(c => targets.push({
+        price: c.strike, dist: c.distATR,
+        type: 'GAMMA', quality: c.dynamics === 'BUILDING' ? 'strong' : 'normal',
+        label: 'γ ' + c.dynamics.slice(0,4),
+      }));
+    (grav?.lagrangePoints || [])
+      .filter(l => l.price < px)
+      .forEach(l => targets.push({
+        price: l.price, dist: l.distATR,
+        type: 'L1', quality: 'decision',
+        label: 'L1 ' + l.stability.slice(0,4),
+      }));
+    (sta?.allStations || [])
+      .filter(s => s.price < px
+        && (s.character === 'S2R' || s.character === 'BROKEN_DOWN'
+          || s.type === 'PDL' || s.type === 'ORB_L' || s.type === 'ROUND'))
+      .forEach(s => targets.push({
+        price: s.price, dist: s.distATR,
+        type: s.type, quality: s.character === 'S2R' ? 'strong' : 'normal',
+        label: s.type.replace('_',' '),
+      }));
+  }
+
+  if (targets.length === 0) return null;
+  return targets.sort((a, b) => a.dist - b.dist)[0];
+}
+
+// ── Main synthesis ────────────────────────────────────────────────
+function computeSPYCOMMAND(ship, grav, sta, fuel, row) {
+  const px  = row?.quote?.last || 0;
+  const atr = row?.bars ? calcATR(row.bars, 14) : 1.0;
+  const tc  = timeCtx || buildTimeCtx(row?.state?.marketTime || 'unknown');
+  const { sessionPhase, isExpiryDay, etHour, isPreClose, isRegular } = tc;
+
+  // ── Time-aware signal weights ────────────────────────────────
+  // GRAV dominates late in expiry day; SHIP fades; FUEL becomes multiplier only
+  let wG, wS, wT, wF;
+  if (!isRegular) {
+    wG=0.40; wS=0.20; wT=0.25; wF=0.15;
+  } else if (isExpiryDay && sessionPhase === 'CLOSING') {
+    wG=0.60; wS=0.05; wT=0.30; wF=0.05;  // GRAV+STA own the close
+  } else if (isExpiryDay && sessionPhase === 'AFTERNOON') {
+    wG=0.50; wS=0.15; wT=0.25; wF=0.10;
+  } else if (sessionPhase === 'OPEN_AUCTION') {
+    wG=0.25; wS=0.30; wT=0.20; wF=0.25;  // SHIP reliable at open
+  } else {
+    wG=0.35; wS=0.25; wT=0.20; wF=0.20;  // normal session weights
+  }
+
+  const SIGNALS = [
+    { name: 'GRAV', s: grav, w: wG },
+    { name: 'SHIP', s: ship, w: wS },
+    { name: 'STA',  s: sta,  w: wT },
+    { name: 'FUEL', s: fuel, w: wF },
+  ];
+
+  // Active = not POSITION and conf >= 0.35
+  const active = SIGNALS.filter(sig =>
+    sig.s && sig.s.state !== 'POSITION' && sig.s.conf >= 0.35
+  );
+
+  const wConfSum = active.reduce((s, sig) => s + sig.w * sig.s.conf, 0);
+  const wTotalSum = SIGNALS.reduce((s, sig) => s + sig.w, 0);
+  const compScore = wConfSum > 0
+    ? active.reduce((s, sig) => s + sig.s.score * sig.w * sig.s.conf, 0) / wConfSum
+    : 0;
+  const compConf = SIGNALS.reduce((s, sig) =>
+    s + (sig.s ? sig.s.conf : 0) * sig.w, 0) / wTotalSum;
+
+  const direction = compScore >= 0 ? 'CALL' : 'PUT';
+
+  const bullActive = active.filter(sig => sig.s.score >  0.10);
+  const bearActive = active.filter(sig => sig.s.score < -0.10);
+  const hasConflict = bullActive.length > 0 && bearActive.length > 0;
+
+  // ── FUEL as amplifier (item 4) ───────────────────────────────
+  // FUEL no longer gates CMD — it modulates speed up or down.
+  // COLLAPSED only suppresses if it reflects active contrary flow.
+  const fuelMultiplier =
+    fuel?.fuelState === 'BURNING'      ? 1.40
+  : fuel?.fuelState === 'PRE_IGNITION' ? 1.15
+  : fuel?.fuelState === 'FADING'       ? 0.90
+  : fuel?.fuelState === 'QUIET'        ? 0.85
+  : fuel?.fuelState === 'COLLAPSED'    ? 0.60   // active contrary — meaningful suppress
+  : 1.0;
+
+  // Greek flow confirmation multiplier
+  const gfBias = fuel?.greekFlowBias || 0;
+  const gfMultiplier = Math.abs(gfBias) > 0.15 && Math.sign(gfBias) === (compScore >= 0 ? 1 : -1)
+    ? 1.10 : (Math.abs(gfBias) > 0.15 ? 0.92 : 1.0);
+
+  const effectiveConf = clamp(compConf * fuelMultiplier * gfMultiplier, 0, 1);
+
+  // ── PINNED state override (item 7) ───────────────────────────
+  // After 13:30 on expiry day: sustained PIN = suppress breakout calls,
+  // LAUNCHING = immediate THRUST in break direction
+  const pinnedCycles = grav?.pinnedCycles || 0;
+  const isOpexPin = isExpiryDay && etHour >= 13.50 && pinnedCycles >= 3;
+  const isPinBreak = isExpiryDay && grav?.field0DTEstate === 'LAUNCHING' && pinnedCycles === 0
+                    && GravState.lastFieldState !== 'LAUNCHING';
+
+  // ── Hard STOP gates ───────────────────────────────────────────
+  const stopGates = [];
+
+  if (active.length === 0)
+    stopGates.push('All signals POSITION — no directional conviction');
+
+  // GRAV vs SHIP direct conflict — both active, opposite directions
+  if (ship && grav
+    && ship.state !== 'POSITION' && grav.state !== 'POSITION'
+    && ship.state !== grav.state
+    && ship.conf >= 0.50 && grav.conf >= 0.55)
+    stopGates.push('SPYSHIP fighting SPYGRAVITY — price moving against gravitational field');
+
+  // Structural wall blocking direction
+  if (direction === 'CALL' && sta?.wallApproach)
+    stopGates.push('RESISTANCE wall at $' + (sta?.nearest?.price?.toFixed(2)||'?') + ' blocking upside');
+  if (direction === 'PUT' && sta?.floorApproach && sta?.s2rActive)
+    stopGates.push('S2R floor at $' + (sta?.nearest?.price?.toFixed(2)||'?') + ' blocking downside');
+
+  // BOUNDED suppresses — but GRAV override can still escalate past STOP (below)
+  if (grav?.fieldState === 'BOUNDED')
+    stopGates.push('BOUNDED field — equal mass above and below');
+
+  // COLLAPSED only stops when active contrary (not just absence of fuel)
+  if (fuel?.activeCollapse)
+    stopGates.push('FUEL COLLAPSED — active contrary institutional flow');
+
+  // ── GRAV override (item 5) ────────────────────────────────────
+  // When GRAV is very high confidence CLEAR_RUNWAY and SHIP is non-BEAR,
+  // override to at least IDLE regardless of other gates.
+  const gravOverride = grav
+    && grav.conf >= 0.880
+    && grav.fieldState === 'CLEAR_RUNWAY'
+    && grav.state !== 'POSITION'
+    && (ship === null || ship.state !== 'BEAR' || ship.conf < 0.50);
+
+  // ── Speed classification ──────────────────────────────────────
+  let speed;
+  const nearL1 = (grav?.lagrangePoints || []).some(l => l.distATR < 0.40);
+
+  if (isPinBreak) {
+    // OPEX pin break — immediate THRUST in break direction
+    speed = 'THRUST';
+  } else if (stopGates.length > 0 && !gravOverride) {
+    speed = 'STOP';
+  } else if (gravOverride && stopGates.length > 0) {
+    // GRAV overrides BOUNDED/QUIET-related stops but not conflict or wall stops
+    const hardStops = stopGates.filter(g =>
+      g.includes('fighting') || g.includes('blocking') || g.includes('COLLAPSED')
+    );
+    speed = hardStops.length > 0 ? 'STOP' : 'IDLE';
+  } else if (
+    active.length < 2 ||
+    hasConflict ||
+    effectiveConf < 0.38 ||
+    nearL1 ||
+    isOpexPin  // sustained pin — suppress directional calls
+  ) {
+    speed = 'IDLE';
+  } else if (
+    active.length >= 3 &&
+    effectiveConf >= 0.62 &&
+    !hasConflict &&
+    grav?.fieldState === 'CLEAR_RUNWAY'
+  ) {
+    speed = 'FULL';
+  } else {
+    speed = 'THRUST';
+  }
+
+  // ── Destination ───────────────────────────────────────────────
+  const destination = findDestination(direction, grav, sta, px, atr);
+
+  // ── Advisories ───────────────────────────────────────────────
+  const advisories = [];
+  stopGates.forEach(g => advisories.push({ level: 'STOP', text: g }));
+
+  if (gravOverride && stopGates.length > 0)
+    advisories.push({ level: 'INFO', text: 'GRAV OVERRIDE — high-conf CLEAR_RUNWAY overriding weak stop' });
+  if (isPinBreak)
+    advisories.push({ level: 'STOP', text: 'OPEX PIN BREAK — LAUNCHING from $' + grav?.dominantStrike });
+  if (isOpexPin)
+    advisories.push({ level: 'INFO', text: 'OPEX PIN active at $' + grav?.dominantStrike + ' — ' + pinnedCycles + ' cycles' });
+
+  if (grav?.wallEffect)
+    advisories.push({ level: 'CAUTION', text: 'Wall at $' + grav.dominantStrike + ' — break or bounce imminent' });
+
+  (grav?.lagrangePoints || []).filter(l => l.distATR < 1.5)
+    .forEach(l => advisories.push({ level: 'CAUTION',
+      text: 'L1 decision boundary at $' + l.price + ' [' + l.stability + '] — ' +
+            (l.distATR < 0.4 ? 'AT boundary' : l.distATR.toFixed(1) + ' ATR') }));
+
+  if (fuel?.fuelState === 'FADING' && fuel?.momentumDir !== 0)
+    advisories.push({ level: 'CAUTION', text: 'Fuel fading — coherence ' + (fuel.coherenceMult?.toFixed(2)||'?') + '× declining' });
+  if (fuel?.activeCollapse)
+    advisories.push({ level: 'CAUTION', text: 'Fuel collapse — active contrary flow (' + fuel.contraryBars + ' bars)' });
+
+  (grav?.clusters || [])
+    .filter(c => c.dynamics === 'DISSOLVING'
+      && (direction === 'CALL' ? c.dir > 0 : c.dir < 0)
+      && c.distATR < 2.0)
+    .forEach(c => advisories.push({ level: 'CAUTION',
+      text: 'Expected dissolve at $' + c.strike + ' (' + c.distATR.toFixed(1) + ' ATR)' }));
+
+  if (grav?.transitionSignal === 'REVERSAL')
+    advisories.push({ level: 'CAUTION', text: 'GRAVITY: REVERSAL — persistence ' + (grav.persistenceScore?.toFixed(1)||'?') });
+  if (grav?.transitionSignal === 'PULLBACK')
+    advisories.push({ level: 'CAUTION', text: 'GRAVITY: PULLBACK — ' + (grav.persistenceScore?.toFixed(1)||'?') + ' persistence' });
+
+  (grav?.emergingClusters || []).filter(e => e.imminent)
+    .forEach(e => advisories.push({ level: 'CAUTION', text: '⚡ Forming cluster at $' + e.strike + ' — imminent' }));
+
+  if (grav?.fieldState === 'CONTESTED')
+    advisories.push({ level: 'INFO', text: 'Contested gravitational field — reduced confidence' });
+  if (nearL1)
+    advisories.push({ level: 'INFO', text: 'At gravitational decision boundary — binary snap pending' });
+  if (grav?.vacuumAhead)
+    advisories.push({ level: 'INFO', text: 'Clear vacuum in travel direction — no friction to destination' });
+  if (fuel?.greekFlowBias && Math.abs(fuel.greekFlowBias) > 0.20)
+    advisories.push({ level: 'INFO', text: 'Greek flow ' + (fuel.greekFlowBias > 0 ? 'BULLISH' : 'BEARISH') + ' (' + fuel.greekFlowBias.toFixed(2) + ') — dealer hedging confirms' });
+  if (fuel?.fuelState === 'PRE_IGNITION' && speed !== 'FULL')
+    advisories.push({ level: 'INFO', text: 'Fuel PRE_IGNITION — building toward BURNING' });
+  if (fuel?.sweepLocked)
+    advisories.push({ level: 'INFO', text: 'Sweeps LOCKED ' + (direction === 'CALL' ? 'CALL' : 'PUT') + ' — ' + (fuel.diagnostics?.lockCount||0) + ' consecutive readings' });
+  if (!fuel?.hasNOPE)
+    advisories.push({ level: 'INFO', text: 'Dealer: NOPE proxy (net premium)' });
+  if ((grav?.diagnostics?.frac0 || 0) > 0.80)
+    advisories.push({ level: 'INFO', text: '0DTE dominated field — gravity expires at 4pm ET' });
+  if (sta?.snapZone)
+    advisories.push({ level: 'INFO', text: 'Price in snap zone — at named level' });
+  if (sessionPhase === 'OPEN_AUCTION')
+    advisories.push({ level: 'INFO', text: 'OPEN AUCTION — signal reliability low, widened spreads' });
+  if (!isRegular)
+    advisories.push({ level: 'INFO', text: 'EXTENDED HOURS — signals for context only' });
+
+  // Awaiting signal data
+  const activeNames = active.map(s => s.name).join(' · ');
+  if (active.length < 4)
+    advisories.push({ level: 'INFO', text: 'Awaiting signal data...' });
+
+  return {
+    score:      +compScore.toFixed(3),
+    conf:       +effectiveConf.toFixed(3),
+    speed,
+    direction,
+    destination,
+    advisories,
+    activeSignals:   activeNames,
+    fuelMultiplier:  +fuelMultiplier.toFixed(2),
+    sessionPhase,
+    gravOverride,
+    isPinBreak,
+    isOpexPin,
+    weights: { wG, wS, wT, wF },
+  };
+}
+
+// ── Speedometer canvas renderer ───────────────────────────────────
+function drawSpeedometer(speed) {
+  const canvas = document.getElementById('cmdGauge');
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W   = canvas.offsetWidth  || 240;
+  const H   = canvas.offsetHeight || 130;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W / 2;
+  const cy = H - 18;
+  const R  = Math.min(cx - 12, cy - 4);
+
+  // Background arc
+  ctx.beginPath();
+  ctx.arc(cx, cy, R, Math.PI, 2 * Math.PI);
+  ctx.lineWidth = 14;
+  ctx.strokeStyle = '#1e201a';
+  ctx.stroke();
+
+  // Four colored zone arcs (π to 2π split into four equal quarters)
+  const zones = [
+    { from: Math.PI,           to: Math.PI * 1.25, color: '#ef4444' },  // STOP
+    { from: Math.PI * 1.25,    to: Math.PI * 1.50, color: '#fbbf24' },  // IDLE
+    { from: Math.PI * 1.50,    to: Math.PI * 1.75, color: '#86efac' },  // THRUST
+    { from: Math.PI * 1.75,    to: Math.PI * 2.00, color: '#4ade80' },  // FULL
+  ];
+  zones.forEach(z => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, z.from, z.to);
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = z.color + '99';
+    ctx.stroke();
+  });
+
+  // Tick marks at zone boundaries
+  [0, 0.25, 0.50, 0.75, 1.0].forEach(t => {
+    const a = Math.PI + t * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * (R - 10), cy + Math.sin(a) * (R - 10));
+    ctx.lineTo(cx + Math.cos(a) * (R + 2),  cy + Math.sin(a) * (R + 2));
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#4a4d3e';
+    ctx.stroke();
+  });
+
+  // Zone labels
+  ctx.font = `bold ${Math.max(8, Math.round(R * 0.11))}px "IBM Plex Mono", monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const labelDefs = [
+    { t: 0.125, label: 'STOP',   color: '#ef4444' },
+    { t: 0.375, label: 'IDLE',   color: '#fbbf24' },
+    { t: 0.625, label: 'THRUST', color: '#86efac' },
+    { t: 0.875, label: 'FULL',   color: '#4ade80' },
+  ];
+  labelDefs.forEach(d => {
+    const a  = Math.PI + d.t * Math.PI;
+    const lr = R * 0.64;
+    ctx.fillStyle = d.color;
+    ctx.fillText(d.label, cx + Math.cos(a) * lr, cy + Math.sin(a) * lr);
+  });
+
+  // Needle
+  const needleT = { STOP: 0.125, IDLE: 0.375, THRUST: 0.625, FULL: 0.875 }[speed] || 0.375;
+  const needleA = Math.PI + needleT * Math.PI;
+  const nColor  = { STOP:'#ef4444', IDLE:'#fbbf24', THRUST:'#86efac', FULL:'#4ade80' }[speed] || '#fbbf24';
+
+  // Needle shadow
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(needleA) * R * 0.85, cy + Math.sin(needleA) * R * 0.85);
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = '#00000066';
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Needle
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(needleA) * R * 0.85, cy + Math.sin(needleA) * R * 0.85);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = nColor;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  // Center hub
+  ctx.beginPath();
+  ctx.arc(cx, cy, R * 0.09, 0, Math.PI * 2);
+  ctx.fillStyle = nColor;
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy, R * 0.05, 0, Math.PI * 2);
+  ctx.fillStyle = '#0e0f0d';
+  ctx.fill();
+}
+
+// ── Render SPYCOMMAND ─────────────────────────────────────────────
+function renderSPYCOMMAND(cmd) {
+  if (!cmd) {
+    // No data yet — just update speed to IDLE
+    drawSpeedometer('IDLE');
+    return;
+  }
+
+  // Speed gauge
+  drawSpeedometer(cmd.speed);
+
+
+  // Composite read — horizontal child spans
+  const cScore=$('cmd-c-score'), cConf=$('cmd-c-conf'), cActive=$('cmd-c-active');
+  if (cScore) cScore.textContent = 'score '+(cmd.compScore>=0?'+':'')+cmd.compScore;
+  if (cConf)  cConf.textContent  = 'conf '+cmd.compConf.toFixed(2);
+  if (cActive) {
+    cActive.textContent = 'active: '+(cmd.activeSignals.join(' · ')||'none');
+    cActive.style.color = cmd.hasConflict ? 'var(--bear2)' : 'var(--ink3)';
+  }
+
+  // Direction
+  const callEl = $('cmd-dir-call');
+  const putEl  = $('cmd-dir-put');
+  if (callEl && putEl) {
+    callEl.className = 'cmd-dir-half cmd-dir-call ' + (cmd.direction === 'CALL' ? 'active' : 'inactive');
+    putEl.className  = 'cmd-dir-half cmd-dir-put '  + (cmd.direction === 'PUT'  ? 'active' : 'inactive');
+  }
+
+  // Destination bullseye
+  const bull = $('cmd-bullseye');
+  const destPx = $('cmd-dest-price');
+  const destTy = $('cmd-dest-type');
+  if (bull) {
+    bull.className = 'cmd-bullseye ' + cmd.direction.toLowerCase();
+  }
+  if (destPx && destTy) {
+    if (cmd.destination) {
+      destPx.textContent = '$' + cmd.destination.price.toFixed(2);
+      destTy.textContent = cmd.destination.label + ' · ' + cmd.destination.dist.toFixed(1) + 'atr';
+      destPx.style.color = cmd.direction === 'CALL' ? 'var(--bull2)' : 'var(--bear2)';
+    } else {
+      destPx.textContent = '$—';
+      destTy.textContent = 'no target identified';
+      destPx.style.color = 'var(--ink3)';
+    }
+  }
+
+  // Advisories
+  // Update advisory badges without destroying the DATA button
+  let advSpan = $('cmd-adv-badges');
+  if (!advSpan) {
+    advSpan = document.createElement('span');
+    advSpan.id = 'cmd-adv-badges';
+    advSpan.style.cssText = 'display:contents';
+    const strip = $('cmd-adv-strip');
+    if (strip) strip.insertBefore(advSpan, strip.firstChild);
+  }
+  if (advSpan) {
+    advSpan.innerHTML = cmd.advisories.slice(0, 12).map(a => {
+      const cls  = a.level === 'STOP' ? 'stop' : a.level === 'CAUTION' ? 'caution' : 'info';
+      const icon = a.level === 'STOP' ? '⛔' : a.level === 'CAUTION' ? '⚠' : 'ℹ';
+      return `<span class="adv-badge ${cls}">${icon} ${a.text}</span>`;
+    }).join('');
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  DISPLAY
+// ═══════════════════════════════════════════════════════════
+
+// ── Helpers ───────────────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+function sign(v) { return v >= 0 ? '+' : ''; }
+function fmtAge(ms) {
+  if (!isFinite(ms)) return '—';
+  if (ms < 1000) return ms + 'ms';
+  return (ms/1000).toFixed(1) + 's ago';
+}
+function fmtTimeET(ts) {
+  try {
+    return new Date(ts).toLocaleTimeString('en-US',
+      { hour12:false, timeZone:'America/New_York',
+        hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  } catch(e) { return new Date(ts).toLocaleTimeString(); }
+}
+
+// ── Signal history (for data lake table) ─────────────────────────
+const SignalHistory = [];
+
+// ── Signal log — structured 1-min interval captures ──────────────
+// Fields: ts, price, cmd, ship, grav, sta, fuel
+// P&L fields (pl2m/pl5m/pl10m/pl15m/pl30m) computed retroactively from SignalHistory
+const SignalLog = [];
+
+// ── Collapse toggle ───────────────────────────────────────────────
+// openPanel — called by both DATA and LOG advisory buttons.
+// If panel is closed, opens it to the requested view.
+// If panel is open in the same view, closes it.
+// If panel is open in a different view, just switches view.
+function openPanel(mode) {
+  const el  = $('data-row');
+  const viz = $('viz-row');
+  if (!el) return;
+  const isOpen   = el.style.display !== 'none';
+  const sameMode = dataViewMode === mode;
+
+  if (isOpen && sameMode) {
+    // Close panel — restore charts
+    el.style.display  = 'none';
+    if (viz) viz.style.display = '';
+  } else {
+    // Open panel — collapse charts so data takes full space
+    el.style.display  = '';
+    if (viz) viz.style.display = 'none';
+    _applyPanelMode(mode);
+  }
+}
+
+function _applyPanelMode(mode) {
+  dataViewMode = mode;
+  const lakeDiv  = $('data-lake-view');
+  const logDiv   = $('data-log-view');
+  const titleEl  = $('data-view-title');
+  const btnData  = $('btn-data');
+  const btnLog   = $('btn-log');
+
+  if (lakeDiv) lakeDiv.style.display = mode==='lake' ? '' : 'none';
+  if (logDiv)  logDiv.style.display  = mode==='log'  ? '' : 'none';
+  if (titleEl) titleEl.textContent   = mode==='lake' ? 'DATA LAKE' : 'SIGNAL LOG';
+
+  if (btnData) { btnData.className='adv-data-btn'+(mode==='lake'?' open':''); btnData.textContent=(mode==='lake'?'▲ ':'▶ ')+'DATA'; }
+  if (btnLog)  { btnLog.className ='adv-data-btn'+(mode==='log' ?' open':''); btnLog.textContent =(mode==='log' ?'▲ ':'▶ ')+'LOG';  }
+
+  if (mode==='lake') populateDataLake();
+  else populateSignalLog();
+}
+
+// ── Price info box state ──────────────────────────────────────────
+const PriceInfoState = { spyRef:null, vixRef:null, vpocRef:null, date:'' };
+
+function updatePriceInfo(row, ship) {
+  const { dateStr } = etNow();
+  if (PriceInfoState.date !== dateStr) {
+    PriceInfoState.spyRef=null; PriceInfoState.vixRef=null;
+    PriceInfoState.vpocRef=null; PriceInfoState.date=dateStr;
+  }
+  const cc = v => v > 0 ? 'var(--bull2)' : v < 0 ? 'var(--bear2)' : 'var(--ink2)';
+  const fc = (v, ref, dec=2) => {
+    if (!v||!ref) return '—';
+    const d=v-ref, p=(d/ref*100);
+    const s=d>=0?'+':'';
+    return s+d.toFixed(dec)+' ('+s+p.toFixed(2)+'%)';
+  };
+
+  // SPY
+  const spy = row?.quote?.last||0;
+  if (!PriceInfoState.spyRef && spy>0) PriceInfoState.spyRef=spy;
+  const sd = PriceInfoState.spyRef ? spy-PriceInfoState.spyRef : (row?.quote?.change||0);
+  const spyEl=$('pi-spy'), spyChgEl=$('pi-spy-chg');
+  if (spyEl) { spyEl.textContent=spy?'$'+spy.toFixed(2):'$—'; spyEl.style.color=cc(sd); }
+  if (spyChgEl) { spyChgEl.textContent=fc(spy,PriceInfoState.spyRef); spyChgEl.style.color=cc(sd); }
+
+  // VIX
+  const vix = row?.vix?.last||0;
+  if (!PriceInfoState.vixRef && vix>0) PriceInfoState.vixRef=vix;
+  const vd = PriceInfoState.vixRef ? vix-PriceInfoState.vixRef : (row?.vix?.change||0);
+  const vixEl=$('pi-vix'), vixChgEl=$('pi-vix-chg');
+  // VIX inverted: up VIX = bearish = red; down VIX = bullish = green
+  if (vixEl) { vixEl.textContent=vix?vix.toFixed(2):'—'; vixEl.style.color=cc(-vd); }
+  if (vixChgEl) { vixChgEl.textContent=fc(vix,PriceInfoState.vixRef); vixChgEl.style.color=cc(-vd); }
+
+  // VPOC
+  const vpoc = ship?.diag?.vpoc||0;
+  if (!PriceInfoState.vpocRef && vpoc>0) PriceInfoState.vpocRef=vpoc;
+  const vpd = vpoc&&PriceInfoState.vpocRef ? vpoc-PriceInfoState.vpocRef : 0;
+  const vpocEl=$('pi-vpoc'), vpocChgEl=$('pi-vpoc-chg');
+  if (vpocEl) { vpocEl.textContent=vpoc?'$'+vpoc.toFixed(2):'$—'; vpocEl.style.color=cc(vpd); }
+  if (vpocChgEl) { vpocChgEl.textContent=vpd?'$'+(vpd>=0?'+':'')+vpd.toFixed(2):'—'; vpocChgEl.style.color=cc(vpd); }
+}
+
+// ── Log entries (for signal log TSV) ─────────────────────────────
+const LogEntries = [];
+
+function log(msg, cls='') {
+  // Write to DOM log entries (if present)
+  const entries = $('log-entries');
+  if (entries) {
+    const ts  = fmtTimeET(Date.now());
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.innerHTML = `<span class="ts">${ts}</span><span class="${cls}">${msg}</span>`;
+    entries.insertBefore(div, entries.firstChild);
+    while (entries.children.length > 300) entries.removeChild(entries.lastChild);
+  }
+  // Also persist to array for TSV export
+  LogEntries.push({ ts: Date.now(), cls, msg });
+  if (LogEntries.length > 1000) LogEntries.shift();
+}
+
+// ── Traffic lights ────────────────────────────────────────────────
+function setTrafficLight(prefix, state, conf) {
+  const r = $(prefix+'-tl-r');
+  const a = $(prefix+'-tl-a');
+  const g = $(prefix+'-tl-g');
+  if (!r) return;
+  const dim = !state || conf < 0.35;
+  r.className = 'tl-dot tl-r ' + (state==='BEAR' && !dim ? 'on' : 'off');
+  a.className = 'tl-dot tl-a ' + ((!state||state==='POSITION') ? (dim?'off':'mid') : 'off');
+  g.className = 'tl-dot tl-g ' + (state==='BULL' && !dim ? 'on' : 'off');
+}
+
+// ── Bar chart (Row 3 left) ────────────────────────────────────────
+// ── Chart state and helpers ──────────────────────────────────────
+const chartState = {
+  tf:          1,     // timeframe: 1 | 2 | 5 | 15 minutes
+  viewBars:    80,    // bars visible in window
+  viewOffset:  0,     // bars from right end (0 = latest)
+  priceShift:  0,     // manual vertical price offset (dollars)
+  lastBars:    null,  // cached for re-render on interaction
+};
+
+function aggregateBars(bars, minutes) {
+  if (minutes <= 1) return bars;
+  const result = [];
+  for (let i = 0; i < bars.length; i += minutes) {
+    const g = bars.slice(i, i + minutes);
+    if (!g.length) continue;
+    result.push({
+      ts: g[0].ts, timeStr: g[0].timeStr,
+      o:  g[0].o,
+      h:  Math.max(...g.map(b => b.h)),
+      l:  Math.min(...g.map(b => b.l)),
+      c:  g[g.length-1].c,
+      v:  g.reduce((s, b) => s + (b.v || 0), 0),
+    });
+  }
+  return result;
+}
+
+// Fixed candle density per timeframe — independent of how many bars are available.
+// Early in the session there may be only 12 5m bars; showing all 12 at full width
+// produces 72px candles. These targets keep candle width sensible at any time of day.
+const TF_VIEW_BARS = { 1: 80, 2: 60, 5: 50, 15: 30 };
+
+function setChartTF(tf) {
+  chartState.tf = tf;
+  chartState.viewOffset = 0;
+  chartState.priceShift = 0;
+  chartState.viewBars   = TF_VIEW_BARS[tf] || 80;
+  ['tf-1','tf-2','tf-5','tf-15'].forEach(id => {
+    const el = $(id);
+    if (el) el.className = 'tf-btn' + (parseInt(id.split('-')[1]) === tf ? ' active' : '');
+  });
+  if (chartState.lastBars) drawPriceChart(chartState.lastBars);
+}
+
+function chartZoom(dir) {
+  // dir=-1: zoom in (fewer bars), dir=+1: zoom out (more bars)
+  chartState.viewBars = Math.max(15, Math.min(400, chartState.viewBars + dir * 20));
+  if (chartState.lastBars) drawPriceChart(chartState.lastBars);
+}
+
+function chartPan(bars) {
+  if (!chartState.lastBars) return;
+  const tf = aggregateBars(chartState.lastBars, chartState.tf);
+  const maxOff = Math.max(0, tf.length - chartState.viewBars);
+  chartState.viewOffset = Math.max(0, Math.min(maxOff, chartState.viewOffset + bars));
+  drawPriceChart(chartState.lastBars);
+}
+
+function chartReset() {
+  chartState.viewOffset = 0;
+  chartState.priceShift = 0;
+  if (chartState.lastBars) drawPriceChart(chartState.lastBars);
+}
+
+// Touch/drag state
+let _chartDrag = null;
+
+function _pinchDist(e) {
+  const dx = e.touches[0].clientX - e.touches[1].clientX;
+  const dy = e.touches[0].clientY - e.touches[1].clientY;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+
+function initChartInteraction() {
+  const canvas = $('priceChart');
+  if (!canvas || canvas._iInited) return;
+  canvas._iInited = true;
+
+  canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (e.touches.length === 2) {
+      // Pinch start — record initial distance and viewBars
+      _chartDrag = {
+        pinch: true,
+        dist0: _pinchDist(e),
+        viewBars0: chartState.viewBars,
+        // mid-point for reference
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        offset: chartState.viewOffset,
+        shift:  chartState.priceShift,
+      };
+    } else {
+      // Single-finger pan start
+      _chartDrag = {
+        pinch: false,
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        offset: chartState.viewOffset,
+        shift:  chartState.priceShift,
+      };
+    }
+  }, { passive: false });
+
+  canvas.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (!_chartDrag || !chartState.lastBars) return;
+
+    if (_chartDrag.pinch && e.touches.length === 2) {
+      // ── Pinch-to-zoom ─────────────────────────────────────────
+      const dist = _pinchDist(e);
+      const scale = _chartDrag.dist0 / dist;  // pinch in = fewer bars (bigger candles)
+      chartState.viewBars = Math.max(15, Math.min(400,
+        Math.round(_chartDrag.viewBars0 * scale)));
+      drawPriceChart(chartState.lastBars);
+      return;
+    }
+
+    if (_chartDrag.pinch) return;  // mid-gesture finger count changed, skip
+
+    // ── Single-finger pan ──────────────────────────────────────
+    const dx = e.touches[0].clientX - _chartDrag.x;
+    const dy = e.touches[0].clientY - _chartDrag.y;
+    const W  = canvas.offsetWidth || 400;
+    const H  = canvas.offsetHeight || 200;
+
+    // Horizontal: pan bars
+    const barsPerPx = chartState.viewBars / W;
+    const tf = aggregateBars(chartState.lastBars, chartState.tf);
+    const maxOff = Math.max(0, tf.length - chartState.viewBars);
+    chartState.viewOffset = Math.max(0, Math.min(maxOff,
+      Math.round(_chartDrag.offset - dx * barsPerPx)));
+
+    // Vertical: shift price range
+    const rightIdx = Math.max(0, tf.length - chartState.viewOffset);
+    const leftIdx  = Math.max(0, rightIdx - chartState.viewBars);
+    const slice    = tf.slice(leftIdx, rightIdx);
+    if (slice.length > 0) {
+      const lo    = Math.min(...slice.map(b => b.l));
+      const hi    = Math.max(...slice.map(b => b.h));
+      const range = (hi - lo) || 1;
+      const dolPerPx = range / (H - 12);
+      chartState.priceShift = _chartDrag.shift + dy * dolPerPx;
+    }
+
+    drawPriceChart(chartState.lastBars);
+  }, { passive: false });
+
+  canvas.addEventListener('touchend', e => {
+    // If one finger lifted during pinch, reset to pan mode with remaining finger
+    if (_chartDrag?.pinch && e.touches.length === 1) {
+      _chartDrag = {
+        pinch: false,
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+        offset: chartState.viewOffset,
+        shift:  chartState.priceShift,
+      };
+    } else {
+      _chartDrag = null;
+    }
+  });
+}
+
+function drawPriceChart(bars) {
+  const canvas = $('priceChart');
+  if (!canvas) return;
+
+  // Cache for interaction re-renders
+  // Only update lastBars if new data is longer (never shrink during session)
+  if (bars && bars.length > 0) {
+    if (!chartState.lastBars || bars.length >= chartState.lastBars.length) {
+      chartState.lastBars = bars;
+    }
+  }
+  const srcBars = chartState.lastBars;
+  if (!srcBars || srcBars.length < 5) return;
+
+  // Aggregate to selected timeframe
+  const tfBars = aggregateBars(srcBars, chartState.tf);
+  if (tfBars.length < 2) return;
+
+  // View window
+  const total    = tfBars.length;
+  const rightIdx = Math.max(1, total - chartState.viewOffset);
+  const leftIdx  = Math.max(0, rightIdx - chartState.viewBars);
+  const view     = tfBars.slice(leftIdx, rightIdx);
+  const n        = view.length;
+  if (n < 2) return;
+
+  // Compute EMAs over full dataset for continuity, then slice to view
+  const e8full  = calcEMA(tfBars, 8);
+  const e21full = calcEMA(tfBars, 21);
+  const e8v     = e8full.slice(leftIdx, rightIdx);
+  const e21v    = e21full.slice(leftIdx, rightIdx);
+
+  // Price range with manual shift
+  const lo_raw  = Math.min(...view.map(b => b.l));
+  const hi_raw  = Math.max(...view.map(b => b.h));
+  const lo      = lo_raw  - chartState.priceShift;
+  const hi      = hi_raw  - chartState.priceShift;
+  const range   = hi - lo || 0.01;
+
+  const dpr = window.devicePixelRatio || 1;
+  const W   = canvas.offsetWidth  || 400;
+  const H   = Math.max(180, canvas.offsetHeight || 180);  // CSS controls visual height
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, W, H);
+
+  const pad  = 6;
+  const pxY  = p => pad + ((hi - p) / range) * (H - pad * 2);
+  const RPAD    = 52;   // right padding so last bar isn't pinned to edge
+  const chartW  = W - RPAD;
+  // Left-align bars. Width is based on actual visible bars (n), capped at MAX_BW.
+  // This fills from left like a standard chart — no awkward right-anchored gap.
+  const MAX_BW  = 14;   // maximum candle body width in px
+  const barSlot = Math.min(MAX_BW + 2, (chartW - 2) / Math.max(n, 1));
+  const pxX     = i => 1 + i * barSlot + barSlot / 2;
+
+  // EMA21 — synchronised with candle slice
+  ctx.beginPath(); ctx.strokeStyle = '#fbbf2488'; ctx.lineWidth = 1.5;
+  view.forEach((b,i) => i===0 ? ctx.moveTo(pxX(i),pxY(e21v[i])) : ctx.lineTo(pxX(i),pxY(e21v[i])));
+  ctx.stroke();
+
+  // EMA8
+  ctx.beginPath(); ctx.strokeStyle = '#4ade8088'; ctx.lineWidth = 1.5;
+  view.forEach((b,i) => i===0 ? ctx.moveTo(pxX(i),pxY(e8v[i])) : ctx.lineTo(pxX(i),pxY(e8v[i])));
+  ctx.stroke();
+
+  // OHLC candles
+  const bw = Math.min(MAX_BW, Math.max(1.5, barSlot - 1.5));
+  view.forEach((b, i) => {
+    const x    = pxX(i);
+    const bull = b.c >= b.o;
+    const oc1  = pxY(Math.max(b.o,b.c));
+    const oc2  = pxY(Math.min(b.o,b.c));
+    ctx.strokeStyle = bull ? '#4ade80aa' : '#f87171aa';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(x, pxY(b.h)); ctx.lineTo(x, pxY(b.l)); ctx.stroke();
+    ctx.fillStyle = bull ? '#4ade8066' : '#f8717166';
+    ctx.fillRect(x - bw/2, oc1, bw, Math.max(1, oc2 - oc1));
+  });
+
+  // Current price dashed line
+  const last = view[n-1].c;
+  const ly   = pxY(last);
+  ctx.beginPath(); ctx.moveTo(0,ly); ctx.lineTo(W,ly);
+  ctx.strokeStyle='#e8e4d844'; ctx.lineWidth=1;
+  ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+
+  // Labels
+  ctx.font = '9px "IBM Plex Mono",monospace';
+  ctx.textAlign='right'; ctx.fillStyle='#e8e4d8';
+  ctx.fillText('$'+last.toFixed(2), W-3, ly-3);
+  ctx.textAlign='left';
+  ctx.fillStyle='#4ade80'; ctx.fillText('EMA8',  4, 12);
+  ctx.fillStyle='#fbbf24'; ctx.fillText('EMA21', 42, 12);
+
+  // Timeframe label
+  ctx.fillStyle='#787468'; ctx.textAlign='right';
+  ctx.fillText(chartState.tf+'m · '+n+' bars', W-3, H-4);
+
+  // Init touch interaction (idempotent)
+  initChartInteraction();
+}
+
+// ── GEX Periscope (Row 3 right) ───────────────────────────────────
+// Static — refreshes at most every 5 minutes
+let lastPeriscopeTs = 0;
+
+function drawGEXPeriscope(row, grav) {
+  const canvas = $('periscopeChart');
+  if (!canvas) return;
+
+  const now = Date.now();
+  const px  = row?.quote?.last || (row?.bars?.length ? row.bars[row.bars.length-1].c : 0);
+
+  // Use SPYGRAVITY cluster output — guaranteed alignment with signals.
+  // Periscope renders what SPYGRAVITY is actually computing, not raw spot data.
+  const clusters = grav?.clusters || [];
+  const hasGrav  = clusters.length > 0 && px > 0;
+
+  if (!hasGrav) {
+    const dpr = window.devicePixelRatio || 1;
+    const W   = canvas.offsetWidth || 280;
+    canvas.width=W*dpr; canvas.height=50*dpr; canvas.style.height='50px';
+    const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+    ctx.fillStyle='#787468'; ctx.font='10px monospace';
+    ctx.textAlign='center'; ctx.fillText('awaiting gravity data', W/2, 28);
+    return;
+  }
+
+  // Throttle to 5-min refresh — but only when grav was valid on last render.
+  // This allows immediate retry when grav transitions from null to populated.
+  const gravWasValid = lastPeriscopeTs > 0;
+  if (gravWasValid && now - lastPeriscopeTs < 5 * 60 * 1000) return;
+  lastPeriscopeTs = now;
+
+  const dpr = window.devicePixelRatio || 1;
+  const W   = canvas.offsetWidth || 280;
+
+  // Strikes ±$7 from price — integer grid
+  const lo      = Math.floor(px) - 7;
+  const hi      = Math.ceil(px)  + 7;
+  const strikes = [];
+  for (let s = hi; s >= lo; s--) strikes.push(s);
+
+  // Build mass map from SPYGRAVITY clusters (already time-weighted, threshold-filtered).
+  // This is the exact same field SPYGRAVITY used for signal computation.
+  // Bar width = adjustedForce magnitude (already includes decay + dynamics).
+  const massMap = {};
+  clusters.forEach(c => {
+    const k = Math.round(c.strike);
+    if (k >= lo && k <= hi) {
+      const callMass = Math.max(0, c.netGEX);   // positive netGEX = call dominant
+      const putMass  = Math.max(0, -c.netGEX);  // negative netGEX = put dominant
+      const total    = c.mass;
+      // Split total mass by netGEX sign — preserves call/put balance
+      massMap[k] = {
+        call: total * (callMass / (Math.abs(c.netGEX) + 0.001 || 1)),
+        put:  total * (putMass  / (Math.abs(c.netGEX) + 0.001 || 1)),
+        force: Math.abs(c.adjustedForce || c.baseForce || 0),
+        dynamics: c.dynamics || 'STABLE',
+      };
+    }
+  });
+
+  const maxForce = Math.max(1, ...clusters.map(c => Math.abs(c.adjustedForce || c.baseForce || 0)));
+  const maxMass  = Math.max(1, ...Object.values(massMap).map(m => Math.max(m.call, m.put)));
+
+  const N       = strikes.length;
+  const ROW_H   = 24;
+  const H       = N * ROW_H + 28;
+  const LABEL_W = 46;
+  const BAR_MAX = (W - LABEL_W - 8) / 2;
+  const CX      = LABEL_W + BAR_MAX;
+
+  canvas.width=W*dpr; canvas.height=H*dpr; canvas.style.height=H+'px';
+  const ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+
+  // Header
+  ctx.font='bold 8px "IBM Plex Mono",monospace'; ctx.textAlign='center';
+  ctx.fillStyle='#ef4444'; ctx.fillText('PUT',  CX - BAR_MAX/2, 11);
+  ctx.fillStyle='#4ade80'; ctx.fillText('CALL', CX + BAR_MAX/2, 11);
+  ctx.fillStyle='#4a4d3e'; ctx.fillText('$', LABEL_W/2, 11);
+
+  // Grav features in range from SPYGRAVITY output
+  const l1s  = (grav?.lagrangePoints||[]).filter(l=>l.price>=lo&&l.price<=hi);
+  const ems  = (grav?.emergingClusters||[]).filter(e=>e.strike>=lo&&e.strike<=hi&&e.imminent);
+  const ovls = (grav?.overlapZones||[]).filter(z=>z.price>=lo&&z.price<=hi);
+
+  strikes.forEach((strike, i) => {
+    const rowY = i * ROW_H + 18;
+    const cy   = rowY + ROW_H / 2;
+    const m    = massMap[strike];
+    const cw   = m ? (m.call / maxMass) * BAR_MAX : 0;
+    const pw   = m ? (m.put  / maxMass) * BAR_MAX : 0;
+
+    // Row stripe
+    if (i%2===0) { ctx.fillStyle='#ffffff05'; ctx.fillRect(0,rowY,W,ROW_H); }
+
+    // Overlap zone highlight
+    if (ovls.some(z=>Math.abs(z.price-strike)<0.7)) {
+      ctx.fillStyle='#fbbf2412'; ctx.fillRect(LABEL_W,rowY,W-LABEL_W,ROW_H);
+    }
+
+    // Dynamics color modifier — BUILDING clusters brighter, DISSOLVING dimmer
+    const dyn  = m?.dynamics || 'STABLE';
+    const alpha = dyn==='BUILDING' ? 'cc' : dyn==='DISSOLVING' ? '44' : '88';
+
+    // Put bar (left of center)
+    if (pw > 0.5) {
+      ctx.fillStyle='#ef444420'; ctx.fillRect(CX-pw, cy-9, pw, 18);
+      ctx.fillStyle='#ef4444'+alpha; ctx.fillRect(CX-pw, cy-5, pw, 10);
+    }
+    // Call bar (right of center)
+    if (cw > 0.5) {
+      ctx.fillStyle='#4ade8020'; ctx.fillRect(CX, cy-9, cw, 18);
+      ctx.fillStyle='#4ade80'+alpha; ctx.fillRect(CX, cy-5, cw, 10);
+    }
+
+    // Strike label
+    ctx.fillStyle = m ? '#b4b09e' : '#4a4d3e';
+    ctx.font='9px "IBM Plex Mono",monospace'; ctx.textAlign='right';
+    ctx.fillText('$'+strike, LABEL_W-3, cy+3);
+
+    // Lagrange marker
+    const l1 = l1s.find(l=>Math.abs(l.price-strike)<0.55);
+    if (l1) {
+      const lc = l1.stability==='STABLE' ? '#fbbf24' : '#b4b09e';
+      ctx.beginPath(); ctx.arc(CX,cy,6,0,Math.PI*2);
+      ctx.fillStyle=lc+'44'; ctx.fill();
+      ctx.strokeStyle=lc; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.fillStyle=lc; ctx.font='bold 7px monospace'; ctx.textAlign='center';
+      ctx.fillText('L1',CX,cy+2);
+    }
+
+    // Emerging cluster dashed outline
+    if (ems.some(e=>Math.round(e.strike)===strike)) {
+      ctx.strokeStyle='#fbbf2466'; ctx.lineWidth=1;
+      ctx.setLineDash([3,3]);
+      ctx.strokeRect(CX, cy-10, Math.max(8,cw+4), 20);
+      ctx.setLineDash([]);
+    }
+  });
+
+  // Center axis
+  ctx.beginPath(); ctx.moveTo(CX,16); ctx.lineTo(CX,H);
+  ctx.strokeStyle='#4a4d3e'; ctx.lineWidth=1; ctx.stroke();
+
+  // Current price line
+  const frac   = (hi - px) / (hi - lo);
+  const priceY = frac * N * ROW_H + 18;
+  ctx.beginPath(); ctx.moveTo(LABEL_W,priceY); ctx.lineTo(W,priceY);
+  ctx.strokeStyle='#e8e4d8bb'; ctx.lineWidth=2;
+  ctx.setLineDash([5,3]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='#e8e4d8'; ctx.font='bold 9px "IBM Plex Mono",monospace';
+  ctx.textAlign='left'; ctx.fillText('$'+px.toFixed(2), CX+3, priceY-3);
+
+  // Timestamp + DTE context
+  const { dateStr: today } = etNow();
+  const isExpiry = isSPYExpiryDay(today);
+  const { hour: etH } = etNow();
+  const dteLabel = isExpiry ? dteWeights(etH, true) : null;
+  ctx.fillStyle='#4a4d3e'; ctx.font='8px "IBM Plex Mono",monospace';
+  ctx.textAlign='right';
+  const label = dteLabel
+    ? '0D:'+Math.round(dteLabel.w0*100)+'% 1D:'+Math.round(dteLabel.w1*100)+'%'
+    : '1D/2D field';
+  ctx.fillText(label + ' · ' + fmtTimeET(now), W-3, H-3);
+}
+
+// ── Data view toggle ──────────────────────────────────────────────
+let dataViewMode = 'lake';
+
+function switchView(mode) { _applyPanelMode(mode); } // legacy alias
+
+function populateDataLake() {
+  const div=$('data-lake-view'); if (!div) return;
+  const rows=SignalHistory.slice(-150).reverse();
+  if (!rows.length) { div.innerHTML='<div class="data-empty">Collecting data...</div>'; return; }
+  div.innerHTML=`<table class="data-table"><thead><tr>
+    <th>Time ET</th><th>Price</th>
+    <th>SHIP</th><th>GRAV</th><th>STA</th><th>FUEL</th><th>CMD</th>
+  </tr></thead><tbody>${rows.map(r=>{
+    const t   = fmtTimeET(r.ts);
+    const px  = r.price?.toFixed(2)||'—';
+    const sc  = c => c?.state==='BULL'?'bull':c?.state==='BEAR'?'bear':'pos';
+    const sf  = r.ship, gf=r.grav, af=r.sta, ff=r.fuel, cf=r.cmd;
+    return `<tr>
+      <td>${t}</td><td>${px}</td>
+      <td class="${sc(sf)}">${sf?sf.state+' '+(sf.score>=0?'+':'')+sf.score.toFixed(2):'—'}</td>
+      <td class="${sc(gf)}">${gf?gf.state+' '+(gf.score>=0?'+':'')+gf.score.toFixed(2)+' '+gf.field:'—'}</td>
+      <td class="${sc(af)}">${af?af.state+' '+(af.score>=0?'+':'')+af.score.toFixed(2):'—'}</td>
+      <td>${ff?ff.state+' '+ff.coherence.toFixed(2)+'×':'—'}</td>
+      <td class="cmd-${cf?.speed?.toLowerCase()||''}">${cf?cf.speed+'/'+cf.direction:'—'}</td>
+    </tr>`;
+  }).join('')}</tbody></table>`;
+}
+
+function populateSignalLog() {
+  const wrap = $('slog-table-wrap');
+  if (!wrap) return;
+
+  // Compute retroactive P&L for each SignalLog entry from SignalHistory
+  const findFwd = (entryTs, minutes) => {
+    const target = entryTs + minutes * 60000;
+    for (let i = SignalHistory.length - 1; i >= 0; i--) {
+      if (SignalHistory[i].ts >= target) continue;
+      if (i < SignalHistory.length - 1 && SignalHistory[i+1].ts >= target) {
+        return SignalHistory[i+1].price;
+      }
+    }
+    // Walk forward
+    for (let i = 0; i < SignalHistory.length; i++) {
+      if (SignalHistory[i].ts >= target) return SignalHistory[i].price;
+    }
+    return null;
+  };
+
+  const plCell = (fwdPx, basePx) => {
+    if (fwdPx === null || !basePx) return '<td class="pl-na">—</td>';
+    const d = fwdPx - basePx;
+    const cls = d > 0 ? 'pl-pos' : d < 0 ? 'pl-neg' : 'pl-na';
+    return `<td class="${cls}">${d >= 0 ? '+' : ''}${d.toFixed(2)}</td>`;
+  };
+
+  if (SignalLog.length === 0) {
+    wrap.innerHTML = '<div class="data-empty">Signal log builds during market hours (1 entry/min)...</div>';
+    return;
+  }
+
+  const rows = SignalLog.slice().reverse();
+  wrap.innerHTML = `<table class="slog-table"><thead><tr>
+    <th>Time</th><th>SPY</th>
+    <th>CMD</th><th>SHIP</th><th>GRAV</th><th>STA</th><th>FUEL</th>
+    <th>+2m</th><th>+5m</th><th>+10m</th><th>+15m</th><th>+30m</th>
+  </tr></thead><tbody>
+  ${rows.map(e => {
+    const p2  = findFwd(e.ts, 2);
+    const p5  = findFwd(e.ts, 5);
+    const p10 = findFwd(e.ts, 10);
+    const p15 = findFwd(e.ts, 15);
+    const p30 = findFwd(e.ts, 30);
+    const cmdCls = e.cmd?.speed === 'FULL' ? 'cmd-full' : e.cmd?.speed === 'THRUST' ? 'cmd-thrust' : e.cmd?.speed === 'STOP' ? 'cmd-stop' : 'cmd-idle';
+    const sc = s => s?.state === 'BULL' ? 'bull' : s?.state === 'BEAR' ? 'bear' : 'pos';
+    return `<tr>
+      <td>${fmtTimeET(e.ts)}</td>
+      <td>$${e.price?.toFixed(2)||'—'}</td>
+      <td class="${cmdCls}">${e.cmd?.speed||'?'}/${e.cmd?.dir||'?'}</td>
+      <td class="${sc(e.ship)}">${e.ship ? (e.ship.score>=0?'+':'')+e.ship.score.toFixed(2)+' '+e.ship.state.slice(0,3) : '—'}</td>
+      <td class="${sc(e.grav)}">${e.grav ? (e.grav.score>=0?'+':'')+e.grav.score.toFixed(2)+' '+e.grav.field.slice(0,4) : '—'}</td>
+      <td>${e.sta?.nearest||'—'}</td>
+      <td>${e.fuel?.state||'?'} ${e.fuel?.coh?.toFixed(2)||''}×</td>
+      ${plCell(p2, e.price)}${plCell(p5, e.price)}${plCell(p10, e.price)}${plCell(p15, e.price)}${plCell(p30, e.price)}
+    </tr>`;
+  }).join('')}
+  </tbody></table>`;
+}
+
+function downloadCurrent() {
+  if (dataViewMode==='lake') downloadDataLake();
+  else downloadSignalLog();
+}
+
+// ── Export helper ────────────────────────────────────────────────
+// iOS Safari does not support <a download> at all.
+// Strategy: try Web Share API (native share sheet), then show modal
+// with COPY button (clipboard) + instructions to paste into Notes/Files.
+let _exportFilename = '';
+let _exportContent  = '';
+
+async function _shareOrShow(content, filename) {
+  _exportContent  = content;
+  _exportFilename = filename;
+
+  // Try Web Share API with file — requires iOS 15+, HTTPS, user gesture
+  if (typeof navigator.share === 'function') {
+    try {
+      const file = new File([content], filename, {type: 'text/plain'});
+      const canShareFile = navigator.canShare && navigator.canShare({files:[file]});
+      if (canShareFile) {
+        await navigator.share({files:[file], title:filename});
+        return; // success — share sheet appeared
+      }
+    } catch(e) {
+      if (e.name === 'AbortError') return; // user tapped cancel
+      // other errors fall through to modal
+    }
+  }
+
+  // Modal fallback — always works, shows content for copy/paste
+  _openExportModal(content, filename);
+}
+
+function _openExportModal(content, filename) {
+  const modal = $('export-modal');
+  const text  = $('export-modal-text');
+  const title = $('export-modal-title');
+  const btn   = $('export-copy-btn');
+  if (!modal || !text) return;
+  title.textContent = filename;
+  text.value = content;
+  modal.className = 'open';
+  // Reset copy button
+  if (btn) { btn.textContent = '📋 Copy All'; btn.style.background = ''; }
+  // Select all text
+  setTimeout(() => { try { text.select(); text.setSelectionRange(0,99999); } catch(e){} }, 100);
+}
+
+async function _shareFile() {
+  if (!_exportContent) return;
+  try {
+    const file = new File([_exportContent], _exportFilename, {type:'text/plain'});
+    if (navigator.canShare && navigator.canShare({files:[file]})) {
+      await navigator.share({files:[file], title:_exportFilename});
+      _closeExportModal();
+      return;
+    }
+  } catch(e) { if (e.name === 'AbortError') return; }
+  // Desktop anchor fallback
+  const blob = new Blob([_exportContent], {type:'text/plain'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = _exportFilename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 2000);
+}
+
+async function _copyExport() {
+  if (!_exportContent) return;
+  const btn = $('export-copy-btn');
+  try {
+    await navigator.clipboard.writeText(_exportContent);
+    if (btn) { btn.textContent = '✓ Copied!'; btn.style.background = '#4ade8033'; }
+    setTimeout(() => { if(btn){ btn.textContent='📋 Copy All'; btn.style.background=''; }}, 2500);
+  } catch(e) {
+    // Clipboard API failed — text is already selected in textarea, tell user
+    if (btn) { btn.textContent = 'Select All + Copy'; }
+    const text = $('export-modal-text');
+    if (text) { text.focus(); text.select(); }
+  }
+}
+
+function _closeExportModal() {
+  const modal = $('export-modal');
+  if (modal) modal.className = '';
+}
+
+function downloadDataLake() {
+  const rows=SignalHistory.slice(-200);
+  const hdr='Time_ET\tPrice\tSHIP_score\tSHIP_state\tSHIP_conf\tGRAV_score\tGRAV_state\tGRAV_conf\tGRAV_field\tSTA_score\tSTA_state\tSTA_conf\tFUEL_state\tFUEL_coherence\tCMD_speed\tCMD_dir';
+  const lines=rows.map(r=>[
+    fmtTimeET(r.ts), r.price?.toFixed(2)||'',
+    r.ship?.score??'', r.ship?.state||'', r.ship?.conf?.toFixed(3)||'',
+    r.grav?.score??'', r.grav?.state||'', r.grav?.conf?.toFixed(3)||'', r.grav?.field||'',
+    r.sta?.score??'',  r.sta?.state||'',  r.sta?.conf?.toFixed(3)||'',
+    r.fuel?.state||'', r.fuel?.coherence?.toFixed(3)||'',
+    r.cmd?.speed||'',  r.cmd?.direction||'',
+  ].join('\t'));
+  const content=[hdr,...lines].join('\n');
+  _shareOrShow(content,'spycommand_lake_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.tsv');
+}
+
+function downloadSignalLog() {
+  // Download structured SignalLog TSV with retroactive P&L columns
+  const findFwd = (entryTs, minutes) => {
+    const target = entryTs + minutes * 60000;
+    for (let i = 0; i < SignalHistory.length; i++) {
+      if (SignalHistory[i].ts >= target) return SignalHistory[i].price;
+    }
+    return null;
+  };
+  const plFmt = (fwdPx, basePx) => {
+    if (fwdPx === null || !basePx) return '';
+    return (fwdPx - basePx >= 0 ? '+' : '') + (fwdPx - basePx).toFixed(2);
+  };
+
+  const hdr = 'Time_ET\tSPY_price\tCMD_speed\tCMD_dir\tCMD_score\tCMD_conf'
+    + '\tSHIP_score\tSHIP_state\tSHIP_conf\tSHIP_heading\tSHIP_vpoc'
+    + '\tGRAV_score\tGRAV_state\tGRAV_conf\tGRAV_field\tGRAV_transition\tGRAV_0dte'
+    + '\tSTA_score\tSTA_state\tSTA_nearest'
+    + '\tFUEL_state\tFUEL_coh\tFUEL_locked\tFUEL_sweeps'
+    + '\tPL_2m\tPL_5m\tPL_10m\tPL_15m\tPL_30m';
+
+  const lines = SignalLog.map(e => [
+    fmtTimeET(e.ts),
+    e.price?.toFixed(2)||'',
+    e.cmd?.speed||'', e.cmd?.dir||'',
+    e.cmd?.score?.toFixed(3)||'', e.cmd?.conf?.toFixed(3)||'',
+    e.ship?.score?.toFixed(3)||'', e.ship?.state||'', e.ship?.conf?.toFixed(3)||'',
+    e.ship?.heading||'', e.ship?.vpoc||'',
+    e.grav?.score?.toFixed(3)||'', e.grav?.state||'', e.grav?.conf?.toFixed(3)||'',
+    e.grav?.field||'', e.grav?.transition||'', e.grav?.dte0||'',
+    e.sta?.score?.toFixed(3)||'', e.sta?.state||'', e.sta?.nearest||'',
+    e.fuel?.state||'', e.fuel?.coh?.toFixed(3)||'',
+    e.fuel?.locked?'1':'0', e.fuel?.sweeps||'0',
+    plFmt(findFwd(e.ts,2),e.price),
+    plFmt(findFwd(e.ts,5),e.price),
+    plFmt(findFwd(e.ts,10),e.price),
+    plFmt(findFwd(e.ts,15),e.price),
+    plFmt(findFwd(e.ts,30),e.price),
+  ].join('\t'));
+  const content=[hdr,...lines].join('\n');
+  _shareOrShow(content,'spycommand_slog_'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.tsv');
+}
+
+// ── Main render ───────────────────────────────────────────────────
+function render(row) {
+  // Pulse
+  const p=$('pulse');
+  if (p){p.className='pulse on';setTimeout(()=>p.className='pulse off',400);}
+
+  // Build unified time context — passed implicitly via module-level var
+  // All signals and synthesis read from this single source of truth.
+  timeCtx = buildTimeCtx(row?.state?.marketTime || 'unknown');
+
+  // Compute all signals
+  const ship=computeSPYSHIP(row);
+  updatePriceInfo(row, ship);
+  const grav=computeSPYGRAVITY(row);
+  const sta =computeSPYSTATIONS(row,grav);
+  const fuel=computeSPYFUEL(row);
+  const cmd =computeSPYCOMMAND(ship,grav,sta,fuel,row);
+
+  // Persist to signal history
+  SignalHistory.push({
+    ts:    row.ts||Date.now(),
+    price: row?.quote?.last||(row?.bars?.length?row.bars[row.bars.length-1].c:0),
+    ship:  ship?{score:ship.score,state:ship.state,conf:ship.conf}:null,
+    grav:  grav?{score:grav.score,state:grav.state,conf:grav.conf,field:grav.fieldState}:null,
+    sta:   sta ?{score:sta.score, state:sta.state, conf:sta.conf }:null,
+    fuel:  fuel?{state:fuel.fuelState,coherence:fuel.coherenceMult||0}:null,
+    cmd:   cmd ?{speed:cmd.speed,direction:cmd.direction}:null,
+  });
+  if (SignalHistory.length>500) SignalHistory.shift();
+
+  // ── Row 1: SPYCOMMAND ──────────────────────────────────────────
+  renderSPYCOMMAND(cmd);
+
+  // ── Row 2: Signal cards with traffic lights ───────────────────
+  function updateCard(prefix, sig, vals) {
+    if (!sig) {
+      setTrafficLight(prefix,null,0);
+      $(prefix+'-score').textContent='—';
+      $(prefix+'-state').textContent='NO DATA';
+      $(prefix+'-conf-v').textContent='';
+      $(prefix+'-vals').textContent='—';
+      return;
+    }
+    setTrafficLight(prefix,sig.state,sig.conf);
+    const sc=$(prefix+'-score');
+    sc.textContent=sign(sig.score)+sig.score.toFixed(3);
+    sc.style.color=sig.state==='BULL'?'var(--bull2)':sig.state==='BEAR'?'var(--bear2)':'var(--drift)';
+    $(prefix+'-state').textContent=sig.state;
+    $(prefix+'-conf-v').textContent='c '+sig.conf.toFixed(2);
+    $(prefix+'-vals').textContent=vals;
+  }
+
+  const shipVals = ship?(ship.heading||'?')+'\nVPOC:'+ship.vpocState:'—';
+  const gravVals = grav?(grav.fieldState)+'\n'+(grav.transitionSignal||'?'):'—';
+  const staVals  = sta&&sta.nearest
+    ? sta.nearest.type+' $'+sta.nearest.price.toFixed(2)+'\n'+sta.nearest.character
+    : sta?'no active stations':'—';
+  const fuelVals = fuel?(fuel.fuelState)+'\ncoh '+fuel.coherenceMult.toFixed(2)+'×':'—';
+
+  updateCard('ship', ship, shipVals);
+  updateCard('grav', grav, gravVals);
+  updateCard('sta',  sta,  staVals);
+  updateCard('fuel', fuel, fuelVals);
+
+  // Update SPYGRAVITY state text if computing
+  if (!grav && row?.gamma?.spot) $(  'grav-state').textContent='COMPUTING...';
+
+  // ── Row 3: Visualizations ─────────────────────────────────────
+  drawPriceChart(row?.bars);  // stores in chartState.lastBars
+  drawGEXPeriscope(row, grav);
+
+  // ── Row 4: Data tools ─────────────────────────────────────────
+  // Auto-refresh the open panel
+  const dataPanel = $('data-row');
+  if (dataPanel && dataPanel.style.display !== 'none') {
+    if (dataViewMode==='lake') populateDataLake();
+    else if (dataViewMode==='log') populateSignalLog();
+  }
+
+  // ── Signal log: structured capture every 1 minute ──────────────
+  if (Lake.count()%12===0 && Lake.count()>0) {
+    const px = row?.quote?.last || 0;
+    SignalLog.push({
+      ts:    row.ts || Date.now(),
+      price: px,
+      cmd:   cmd  ? { speed:cmd.speed, dir:cmd.direction, score:cmd.compScore, conf:cmd.compConf } : null,
+      ship:  ship ? { score:ship.score, state:ship.state, conf:ship.conf,
+                      heading:ship.heading, vpoc:ship.vpocState } : null,
+      grav:  grav ? { score:grav.score, state:grav.state, conf:grav.conf,
+                      field:grav.fieldState, transition:grav.transitionSignal,
+                      dte0:grav.field0DTEstate } : null,
+      sta:   sta  ? { score:sta.score, state:sta.state, conf:sta.conf,
+                      nearest: sta.nearest ? sta.nearest.type+' $'+sta.nearest.price.toFixed(2)+' '+sta.nearest.character : '—' } : null,
+      fuel:  fuel ? { state:fuel.fuelState, coh:fuel.coherenceMult,
+                      locked:fuel.sweepLocked, sweeps:fuel.sweepCount } : null,
+    });
+    if (SignalLog.length > 500) SignalLog.shift();
+
+    // Also emit a concise text log entry
+    const sp=cmd?.speed||'?', di=cmd?.direction||'?';
+    const gs=grav?.fieldState?.slice(0,5)||'?';
+    const fs=fuel?.fuelState?.slice(0,4)||'?';
+    log('CMD:'+sp+'/'+di+' conf:'+(cmd?.compConf?.toFixed(2)||'?')
+      +' G:'+gs+' F:'+fs+' $'+(px?px.toFixed(2):'?')+' rows:'+Lake.count(), 'ok');
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────
+log('SPYCOMMAND boot', 'ok');
+log('Proxy: ' + CFG.proxy);
+
+startFetching((row) => {
+  if (Lake.count() === 1) {
+    const nb = row?.bars?.length || 0;
+    const px = row?.quote?.last || '?';
+    log('First row — bars='+nb+' price='+px, nb>0?'ok':'warn');
+  }
+  render(row);
+});
+
+</script>
+
+<!-- Export modal -->
+<div id="export-modal">
+  <div class="export-modal-box">
+    <div class="export-modal-title" id="export-modal-title">EXPORT DATA</div>
+    <textarea id="export-modal-text" readonly></textarea>
+    <div class="export-modal-actions">
+      <button class="btn-share" onclick="_shareFile()">⬆ Share / Save</button>
+      <button class="btn-share" id="export-copy-btn" onclick="_copyExport()" style="background:#fbbf2418;border-color:#fbbf2466;color:var(--drift)">📋 Copy All</button>
+      <button onclick="_closeExportModal()">✕ Close</button>
+    </div>
+    <div class="export-modal-hint">📋 Copy All → paste into Notes app → share as file. Or tap ⬆ Share to save directly.</div>
+  </div>
+</div>
+</body>
+</html>
